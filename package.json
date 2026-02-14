@@ -17,5 +17,12 @@
   "bugs": {
     "url": "https://github.com/Bradley-Hill/forum-backend/issues"
   },
-  "homepage": "https://github.com/Bradley-Hill/forum-backend#readme"
+  "homepage": "https://github.com/Bradley-Hill/forum-backend#readme",
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "pg": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.16.0"
+  }
 }
