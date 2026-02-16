@@ -4,7 +4,8 @@
   "description": "All very classic stuff, but good to make note and keep track of for now...",
   "main": "index.js",
   "scripts": {
-    "test": "vitest"
+    "test": "vitest",
+    "dev": "tsx src/server.ts"
   },
   "repository": {
     "type": "git",
@@ -20,11 +21,14 @@
   "homepage": "https://github.com/Bradley-Hill/forum-backend#readme",
   "dependencies": {
     "dotenv": "^17.3.1",
+    "express": "^5.2.1",
     "pg": "^8.18.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/pg": "^8.16.0",
     "@vitest/ui": "^4.0.18",
+    "tsx": "^4.21.0",
     "vitest": "^4.0.18"
   }
 }
