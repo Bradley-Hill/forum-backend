@@ -1,6 +1,8 @@
 import express from "express";
-import { getAllCategories } from "../repositories/categoryRepository";
+import { getAllCategories, getCategoryBySlug } from "../repositories/categoryRepository";
 import { Category } from "../types/category";
+import { getThreadsByCategory } from "../repositories/threadRepository";
+import { Thread } from "../types/thread";
 
 const router = express.Router();
 
@@ -12,6 +14,85 @@ router.get("/categories", async (req, res) => {
     res.status(500).json({
       error: {
         message: "Failed to fetch categories",
+        code: "DATABASE_ERROR",
+      },
+    });
+  }
+});
+
+// router.get("/categories/:slug", async (req, res) => {
+//   try {
+//     const slug = req.params.slug;
+//     const page = parseInt(req.query.page as string) || 1;
+//     const pageSize = 20;
+
+//     const { threads, totalCount }: { threads: Thread[]; totalCount: number } =
+//       await getThreadsByCategory(slug, page, pageSize);
+
+//     res.json({
+//       data: threads,
+//       pagination: {
+//         page,
+//         pageSize,
+//         totalPages: Math.ceil(totalCount / pageSize),
+//         totalCount,
+//       },
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       error: {
+//         message: "Failed to fetch threads for category",
+//         code: "DATABASE_ERROR",
+//       },
+//     });
+//   }
+// });
+
+router.get("/categories/:slug/threads", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = 20;
+
+    // 1. Get category by slug
+    const category = await getCategoryBySlug(slug);
+    if (!category) {
+      return res.status(404).json({
+        error: {
+          message: "Category not found",
+          code: "CATEGORY_NOT_FOUND",
+        },
+      });
+    }
+
+    // 2. Get threads for that category ID
+    const { threads, totalCount } = await getThreadsByCategory(
+      category.id,
+      page,
+      pageSize
+    );
+
+    // 3. Return spec-matching response
+    res.json({
+      data: {
+        category: {
+          id: category.id,
+          slug: category.slug,
+          name: category.name,
+        },
+        threads,
+        pagination: {
+          page,
+          pageSize,
+          totalThreads: totalCount,
+          totalPages: Math.ceil(totalCount / pageSize),
+        },
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        message: "Failed to fetch threads for category",
         code: "DATABASE_ERROR",
       },
     });
