@@ -6,7 +6,7 @@ import { Thread } from "../types/thread";
 
 const router = express.Router();
 
-router.get("/api/threads/:id", async (req, res) => {
+router.get("/threads/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const page = parseInt(req.query.page as string) || 1;
