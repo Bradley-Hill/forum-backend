@@ -21,14 +21,33 @@ export async function getThreadsByCategory(
       [categoryId, pageSize, offset],
     );
 
-    const transformedThreads = threadsResult.rows.map(mapThreadRow)
-    
+    const transformedThreads = threadsResult.rows.map(mapThreadRow);
+
     return {
       threads: transformedThreads,
       totalCount: totalCount,
     };
   } catch (error) {
     console.error(`Error fetching threads for category ${categoryId}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getThreadById(threadId: string): Promise<Thread | null> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      "SELECT threads.id, threads.category_id, threads.title, threads.is_sticky, threads.is_locked, threads.created_at, threads.updated_at, users.id AS author_id, users.username, (SELECT COUNT(*) FROM posts WHERE posts.thread_id = threads.id) AS reply_count FROM threads JOIN users ON threads.author_id = users.id WHERE threads.id = $1",
+      [threadId],
+    );
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return mapThreadRow(result.rows[0]);
+  } catch (error) {
+    console.error(`Error fetching Thread for Id ${threadId}:`, error);
     throw error;
   } finally {
     client.release();
