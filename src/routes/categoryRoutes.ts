@@ -5,7 +5,6 @@ import {
 } from "../repositories/categoryRepository";
 import { Category } from "../types/category";
 import { getThreadsByCategory } from "../repositories/threadRepository";
-// import { Thread } from "../types/thread";
 
 const router = express.Router();
 
