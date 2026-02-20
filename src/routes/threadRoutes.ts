@@ -1,16 +1,22 @@
 import { getPostsByThread } from "../repositories/postRepository";
 import { getThreadById } from "../repositories/threadRepository";
 import express from "express";
-import { Post } from "../types/post";
 import { Thread } from "../types/thread";
+import { validatePaginationParams } from "../utils/pagination";
 
 const router = express.Router();
 
 router.get("/threads/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = 20;
+
+    const pagination = validatePaginationParams(req.query.page, req.query.pageSize);
+    if(!pagination.valid){
+      return res.status(400).json({error: pagination.error});
+    }
+
+    const { page, pageSize } = pagination;
+
     const thread = await getThreadById(id);
     if (!thread) {
         return res.status(404).json({

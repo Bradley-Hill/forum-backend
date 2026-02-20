@@ -5,6 +5,7 @@ import {
 } from "../repositories/categoryRepository";
 import { Category } from "../types/category";
 import { getThreadsByCategory } from "../repositories/threadRepository";
+import { validatePaginationParams } from "../utils/pagination";
 
 const router = express.Router();
 
@@ -25,8 +26,13 @@ router.get("/categories", async (req, res) => {
 router.get("/categories/:slug/threads", async (req, res) => {
   try {
     const { slug } = req.params;
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = 20;
+
+    const pagination = validatePaginationParams(req.query.page, req.query.pageSize);
+    if(!pagination.valid){
+      return res.status(400).json({error: pagination.error});
+    }
+
+    const { page, pageSize } = pagination;
 
     const category = await getCategoryBySlug(slug);
     if (!category) {
