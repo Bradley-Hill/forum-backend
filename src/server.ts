@@ -1,11 +1,13 @@
 import Express from "express";
 import categoryRoutes from "./routes/categoryRoutes";
 import threadRoutes from "./routes/threadRoutes";
+import authRoutes from "./routes/authRoutes";
 
 const app = Express();
 const port = process.env.PORT || 3000;
 
 app.use(Express.json());
+app.use('/api/auth', authRoutes);
 app.use('/api', threadRoutes);
 app.use('/api', categoryRoutes);
 
