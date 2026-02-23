@@ -10,14 +10,31 @@ export async function getThreadsByCategory(
   const client = await pool.connect();
   try {
     const countResult = await client.query(
-      "SELECT COUNT(*) FROM threads WHERE category_id = $1",
+      `SELECT COUNT(*) 
+       FROM threads 
+       WHERE category_id = $1`,
       [categoryId],
     );
     const totalCount = parseInt(countResult.rows[0].count);
 
     const offset = (page - 1) * pageSize;
     const threadsResult = await client.query(
-      "SELECT threads.id, threads.category_id, threads.title, threads.is_sticky, threads.is_locked, threads.created_at, threads.updated_at, users.id AS author_id, users.username, (SELECT COUNT(*) FROM posts WHERE posts.thread_id = threads.id) AS reply_count FROM threads JOIN users ON threads.author_id = users.id WHERE threads.category_id = $1 ORDER BY threads.is_sticky DESC, threads.updated_at DESC LIMIT $2 OFFSET $3",
+      `SELECT
+         threads.id,
+         threads.category_id,
+         threads.title,
+         threads.is_sticky,
+         threads.is_locked,
+         threads.created_at,
+         threads.updated_at,
+         users.id AS author_id,
+         users.username,
+         (SELECT COUNT(*) FROM posts WHERE posts.thread_id = threads.id) AS reply_count
+       FROM threads
+       JOIN users ON threads.author_id = users.id
+       WHERE threads.category_id = $1
+       ORDER BY threads.is_sticky DESC, threads.updated_at DESC
+       LIMIT $2 OFFSET $3`,
       [categoryId, pageSize, offset],
     );
 
@@ -39,7 +56,20 @@ export async function getThreadById(threadId: string): Promise<Thread | null> {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      "SELECT threads.id, threads.category_id, threads.title, threads.is_sticky, threads.is_locked, threads.created_at, threads.updated_at, users.id AS author_id, users.username, (SELECT COUNT(*) FROM posts WHERE posts.thread_id = threads.id) AS reply_count FROM threads JOIN users ON threads.author_id = users.id WHERE threads.id = $1",
+      `SELECT
+         threads.id,
+         threads.category_id,
+         threads.title,
+         threads.is_sticky,
+         threads.is_locked,
+         threads.created_at,
+         threads.updated_at,
+         users.id AS author_id,
+         users.username,
+         (SELECT COUNT(*) FROM posts WHERE posts.thread_id = threads.id) AS reply_count
+       FROM threads
+       JOIN users ON threads.author_id = users.id
+       WHERE threads.id = $1`,
       [threadId],
     );
     if (result.rows.length === 0) {
@@ -48,6 +78,72 @@ export async function getThreadById(threadId: string): Promise<Thread | null> {
     return mapThreadRow(result.rows[0]);
   } catch (error) {
     console.error(`Error fetching Thread for Id ${threadId}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// FUTURE?: Possibly needed later for admins creating threads.
+// export async function createThread(
+//   categoryId: string,
+//   title: string,
+//   authorId: string,
+// ): Promise<Thread> {
+//   const client = await pool.connect();
+//   try {
+//     const result = await client.query(
+//       `INSERT INTO threads (category_id, title, author_id)
+//        VALUES ($1, $2, $3)
+//        RETURNING id`,
+//       [categoryId, title, authorId],
+//     );
+//     const thread = await getThreadById(result.rows[0].id);
+//     if (!thread) {
+//       throw new Error("Failed to retrieve newly created thread");
+//     }
+//     return thread;
+//   } catch (error) {
+//     console.error(`Error creating thread in category ${categoryId}:`, error);
+//     throw error;
+//   } finally {
+//     client.release();
+//   }
+// }
+
+export async function createThreadWithPost(
+  categoryId: string,
+  title: string,
+  authorId: string,
+  content: string,
+): Promise<Thread> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const threadResult = await client.query(
+      `INSERT INTO threads (category_id, title, author_id)
+     VALUES ($1, $2, $3)
+     RETURNING id`,
+      [categoryId, title, authorId],
+    );
+    const threadId = threadResult.rows[0].id;
+
+    await client.query(
+      `INSERT INTO posts (thread_id, author_id, content)
+     VALUES ($1, $2, $3)`,
+      [threadId, authorId, content],
+    );
+    await client.query("COMMIT");
+
+    const thread = await getThreadById(threadId);
+    if (!thread) throw new Error("Failed to retrieve newly created thread");
+    return thread;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error(
+      `Error creating thread with post in category ${categoryId}:`,
+      error,
+    );
     throw error;
   } finally {
     client.release();

@@ -31,3 +31,19 @@ export async function getCategoryBySlug(slug:string): Promise<Category | null> {
         client.release();
     }
 }
+
+export async function createCategory(slug:string, name:string, description:string): Promise<Category>{
+    const client = await pool.connect();
+    try {
+        const result = await client.query(
+          "INSERT INTO categories (slug,name,description) VALUES ($1,$2,$3) RETURNING id,slug,name,description",
+          [slug, name, description]
+        );
+        return result.rows[0];
+    } catch (error) {
+        console.error(`Error creating category with slug ${slug}:`, error);
+        throw error;
+    } finally {
+        client.release();
+    }
+}
