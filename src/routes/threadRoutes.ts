@@ -2,6 +2,8 @@ import { getPostsByThread } from "../repositories/postRepository";
 import {
   getThreadById,
   createThreadWithPost,
+  updateThread,
+  deleteThread,
 } from "../repositories/threadRepository";
 import express from "express";
 import { Thread } from "../types/thread";
@@ -12,7 +14,7 @@ const router = express.Router();
 
 router.get("/threads/:id", async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const pagination = validatePaginationParams(
       req.query.page,
@@ -68,6 +70,7 @@ router.get("/threads/:id", async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Error fetching thread:", error);
     res.status(500).json({
       error: {
         message: "Failed to fetch thread posts",
@@ -125,9 +128,92 @@ router.post("/threads", authenticateToken, async (req, res) => {
       data: thread,
     });
   } catch (error) {
+    console.error("Error creating thread:", error);
     res.status(500).json({
       error: {
         message: "Failed to create thread",
+        code: "DATABASE_ERROR",
+      },
+    });
+  }
+});
+
+router.patch("/threads/:id", authenticateToken, async (req, res) => {
+  try {
+    const id = req.params.id as string;
+    const { title } = req.body;
+
+    if (!title || title.trim() === "") {
+      return res.status(400).json({
+        error: {
+          message: "Title is required",
+          code: "VALIDATION_ERROR",
+        },
+      });
+    }
+
+    const thread = await getThreadById(id);
+    if (!thread) {
+      return res.status(404).json({
+        error: {
+          message: "Thread not found",
+          code: "THREAD_NOT_FOUND",
+        },
+      });
+    }
+
+    if (req.user!.role !== "admin" && thread.author.id !== req.user!.id) {
+      return res.status(403).json({
+        error: {
+          message: "Forbidden",
+          code: "FORBIDDEN",
+        },
+      });
+    }
+
+    const updated = await updateThread(id, title);
+    res.json({ data: updated });
+  } catch (error) {
+    console.error("Error updating thread:", error);
+    res.status(500).json({
+      error: {
+        message: "Internal server error",
+        code: "DATABASE_ERROR",
+      },
+    });
+  }
+});
+
+router.delete("/threads/:id", authenticateToken, async (req, res) => {
+  try {
+    const id = req.params.id as string;
+
+    const thread = await getThreadById(id);
+    if (!thread) {
+      return res.status(404).json({
+        error: {
+          message: "Thread not found",
+          code: "THREAD_NOT_FOUND",
+        },
+      });
+    }
+
+    if (req.user!.role !== "admin" && thread.author.id !== req.user!.id) {
+      return res.status(403).json({
+        error: {
+          message: "Forbidden",
+          code: "FORBIDDEN",
+        },
+      });
+    }
+
+    await deleteThread(id);
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting thread:", error);
+    res.status(500).json({
+      error: {
+        message: "Internal server error",
         code: "DATABASE_ERROR",
       },
     });

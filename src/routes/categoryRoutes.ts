@@ -2,7 +2,9 @@ import express from "express";
 import {
   getAllCategories,
   getCategoryBySlug,
+  getCategoryById,
   createCategory,
+  deleteCategory,
 } from "../repositories/categoryRepository";
 import { Category } from "../types/category";
 import { getThreadsByCategory } from "../repositories/threadRepository";
@@ -17,6 +19,7 @@ router.get("/categories", async (req, res) => {
     const categories: Category[] = await getAllCategories();
     res.json({ data: categories });
   } catch (error) {
+    console.error("Error fetching categories:", error);
     res.status(500).json({
       error: {
         message: "Failed to fetch categories",
@@ -28,7 +31,7 @@ router.get("/categories", async (req, res) => {
 
 router.get("/categories/:slug/threads", async (req, res) => {
   try {
-    const { slug } = req.params;
+    const slug = req.params.slug as string;
 
     const pagination = validatePaginationParams(
       req.query.page,
@@ -73,6 +76,7 @@ router.get("/categories/:slug/threads", async (req, res) => {
       },
     });
   } catch (error) {
+    console.error("Error fetching threads for category:", error);
     res.status(500).json({
       error: {
         message: "Failed to fetch threads for category",
@@ -82,30 +86,71 @@ router.get("/categories/:slug/threads", async (req, res) => {
   }
 });
 
-router.post("/categories", authenticateToken, requireAdmin, async(req,res)=>{
-  try {
-    const {name, description} = req.body;
-    if (!name || typeof name !== "string" || name.trim() === "") {
-      return res.status(400).json({
+router.post(
+  "/categories",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { name, description } = req.body;
+      if (!name || typeof name !== "string" || name.trim() === "") {
+        return res.status(400).json({
+          error: {
+            message: "Category name is required and must be a non-empty string",
+            code: "INVALID_CATEGORY_NAME",
+          },
+        });
+      }
+      const trimmedName = name.trim();
+      const slug = trimmedName
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9\-]/g, "");
+
+      const category = await createCategory(slug, trimmedName, description);
+      res.status(201).json({ data: category });
+    } catch (error) {
+      console.error("Error creating category:", error);
+      res.status(500).json({
         error: {
-          message: "Category name is required and must be a non-empty string",
-          code: "INVALID_CATEGORY_NAME",
+          message: "Failed to create category",
+          code: "DATABASE_ERROR",
         },
       });
     }
-    const trimmedName = name.trim();
-    const slug = trimmedName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
+  },
+);
 
-    const category = await createCategory(slug, trimmedName, description);
-    res.status(201).json({ data: category });
-  } catch (error) {
-    res.status(500).json({
-      error: {
-        message: "Failed to create category",
-        code: "DATABASE_ERROR",
-      },
-    });
-  }
-});
+router.delete(
+  "/categories/:id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const id = req.params.id as string;
+
+      const category = await getCategoryById(id);
+      if (!category) {
+        return res.status(404).json({
+          error: {
+            message: "Category not found",
+            code: "CATEGORY_NOT_FOUND",
+          },
+        });
+      }
+
+      await deleteCategory(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      res.status(500).json({
+        error: {
+          message: "Internal server error",
+          code: "DATABASE_ERROR",
+        },
+      });
+    }
+  },
+);
 
 export default router;

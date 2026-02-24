@@ -22,7 +22,7 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({
         error: {
           message: "Username, email and password are required",
-          code: "MISSING_FIELDS",
+          code: "VALIDATION_ERROR",
         },
       });
     }
@@ -53,7 +53,7 @@ router.post("/register", async (req, res) => {
     res.status(500).json({
       error: {
         message: "Internal server error",
-        code: "INTERNAL_SERVER_ERROR",
+        code: "DATABASE_ERROR",
       },
     });
   }
@@ -67,7 +67,7 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({
         error: {
           message: "Email and password are required",
-          code: "MISSING_FIELDS",
+          code: "VALIDATION_ERROR",
         },
       });
     }
@@ -106,7 +106,7 @@ router.post("/login", async (req, res) => {
     res.status(500).json({
       error: {
         message: "Internal server error",
-        code: "INTERNAL_SERVER_ERROR",
+        code: "DATABASE_ERROR",
       },
     });
   }
@@ -119,7 +119,7 @@ router.post("/refresh", async (req, res) => {
             return res.status(400).json({
                 error: {
                     message: "Refresh token is required",
-                    code: "MISSING_FIELDS",
+                    code: "VALIDATION_ERROR",
                 },
             });
         }
@@ -156,7 +156,7 @@ router.post("/refresh", async (req, res) => {
         res.status(500).json({
             error: {
                 message: "Internal server error",
-                code: "INTERNAL_SERVER_ERROR",
+                code: "DATABASE_ERROR",
             },
         });
     }
@@ -169,7 +169,7 @@ router.post("/logout", async (req, res) => {
             return res.status(400).json({
                 error: {
                     message: "Refresh token is required",
-                    code: "MISSING_FIELDS",
+                    code: "VALIDATION_ERROR",
                 },
             });
         }
@@ -181,7 +181,7 @@ router.post("/logout", async (req, res) => {
         res.status(500).json({
             error: {
                 message: "Internal server error",
-                code: "INTERNAL_SERVER_ERROR",
+                code: "DATABASE_ERROR",
             },
         });
     }

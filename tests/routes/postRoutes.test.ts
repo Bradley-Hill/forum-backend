@@ -86,3 +86,207 @@ describe("POST /api/posts", () => {
     expect(res.status).toBe(403);
   });
 });
+
+const AUTHOR_USER = {
+  username: "patch_post_author",
+  email: "patch.post.author@example.com",
+  password: "password123",
+};
+
+const ADMIN_USER = {
+  username: "patch_post_admin",
+  email: "patch.post.admin@example.com",
+  password: "password123",
+};
+
+const OTHER_USER = {
+  username: "patch_post_other",
+  email: "patch.post.other@example.com",
+  password: "password123",
+};
+
+describe("PATCH /api/posts/:id", () => {
+  let authorToken: string;
+  let adminToken: string;
+  let otherToken: string;
+  let postId: string;
+
+  beforeEach(async () => {
+    await request(app).post("/api/auth/register").send(AUTHOR_USER);
+    const authorLogin = await request(app).post("/api/auth/login").send({
+      email: AUTHOR_USER.email,
+      password: AUTHOR_USER.password,
+    });
+    authorToken = authorLogin.body.data.accessToken;
+
+    await request(app).post("/api/auth/register").send(ADMIN_USER);
+    await pool.query(`UPDATE users SET role = 'admin' WHERE email = $1`, [
+      ADMIN_USER.email,
+    ]);
+    const adminLogin = await request(app).post("/api/auth/login").send({
+      email: ADMIN_USER.email,
+      password: ADMIN_USER.password,
+    });
+    adminToken = adminLogin.body.data.accessToken;
+
+    await request(app).post("/api/auth/register").send(OTHER_USER);
+    const otherLogin = await request(app).post("/api/auth/login").send({
+      email: OTHER_USER.email,
+      password: OTHER_USER.password,
+    });
+    otherToken = otherLogin.body.data.accessToken;
+
+    const postRes = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({ thread_id: EXISTING_THREAD_ID, content: "Original content" });
+    postId = postRes.body.data.id;
+  });
+
+  afterEach(async () => {
+    await pool.query(`DELETE FROM posts WHERE id = $1`, [postId]);
+    await pool.query(`DELETE FROM users WHERE email = ANY($1)`, [
+      [AUTHOR_USER.email, ADMIN_USER.email, OTHER_USER.email],
+    ]);
+  });
+
+  it("Should return 200 with updated post when author patches", async () => {
+    const res = await request(app)
+      .patch(`/api/posts/${postId}`)
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({ content: "Updated content" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.id).toBe(postId);
+    expect(res.body.data.content).toBe("Updated content");
+  });
+
+  it("Should return 200 with updated post when admin patches", async () => {
+    const res = await request(app)
+      .patch(`/api/posts/${postId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ content: "Admin updated content" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.content).toBe("Admin updated content");
+  });
+
+  it("Should return 400 if content is missing", async () => {
+    const res = await request(app)
+      .patch(`/api/posts/${postId}`)
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  it("Should return 401 if no token is provided", async () => {
+    const res = await request(app)
+      .patch(`/api/posts/${postId}`)
+      .send({ content: "Updated content" });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("Should return 403 if user is not the author or admin", async () => {
+    const res = await request(app)
+      .patch(`/api/posts/${postId}`)
+      .set("Authorization", `Bearer ${otherToken}`)
+      .send({ content: "Updated content" });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("Should return 404 if post does not exist", async () => {
+    const res = await request(app)
+      .patch(`/api/posts/00000000-0000-0000-0000-000000000000`)
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({ content: "Updated content" });
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("DELETE /api/posts/:id", () => {
+  let authorToken: string;
+  let adminToken: string;
+  let otherToken: string;
+  let postId: string;
+
+  beforeEach(async () => {
+    await request(app).post("/api/auth/register").send(AUTHOR_USER);
+    const authorLogin = await request(app).post("/api/auth/login").send({
+      email: AUTHOR_USER.email,
+      password: AUTHOR_USER.password,
+    });
+    authorToken = authorLogin.body.data.accessToken;
+
+    await request(app).post("/api/auth/register").send(ADMIN_USER);
+    await pool.query(`UPDATE users SET role = 'admin' WHERE email = $1`, [
+      ADMIN_USER.email,
+    ]);
+    const adminLogin = await request(app).post("/api/auth/login").send({
+      email: ADMIN_USER.email,
+      password: ADMIN_USER.password,
+    });
+    adminToken = adminLogin.body.data.accessToken;
+
+    await request(app).post("/api/auth/register").send(OTHER_USER);
+    const otherLogin = await request(app).post("/api/auth/login").send({
+      email: OTHER_USER.email,
+      password: OTHER_USER.password,
+    });
+    otherToken = otherLogin.body.data.accessToken;
+
+    const postRes = await request(app)
+      .post("/api/posts")
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({ thread_id: EXISTING_THREAD_ID, content: "Post to be deleted" });
+    postId = postRes.body.data.id;
+  });
+
+  afterEach(async () => {
+    await pool.query(`DELETE FROM posts WHERE id = $1`, [postId]);
+    await pool.query(`DELETE FROM users WHERE email = ANY($1)`, [
+      [AUTHOR_USER.email, ADMIN_USER.email, OTHER_USER.email],
+    ]);
+  });
+
+  it("Should return 204 when author deletes their post", async () => {
+    const res = await request(app)
+      .delete(`/api/posts/${postId}`)
+      .set("Authorization", `Bearer ${authorToken}`);
+
+    expect(res.status).toBe(204);
+  });
+
+  it("Should return 204 when admin deletes any post", async () => {
+    const res = await request(app)
+      .delete(`/api/posts/${postId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(204);
+  });
+
+  it("Should return 401 if no token is provided", async () => {
+    const res = await request(app).delete(`/api/posts/${postId}`);
+
+    expect(res.status).toBe(401);
+  });
+
+  it("Should return 403 if user is not the author or admin", async () => {
+    const res = await request(app)
+      .delete(`/api/posts/${postId}`)
+      .set("Authorization", `Bearer ${otherToken}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  it("Should return 404 if post does not exist", async () => {
+    const res = await request(app)
+      .delete(`/api/posts/00000000-0000-0000-0000-000000000000`)
+      .set("Authorization", `Bearer ${authorToken}`);
+
+    expect(res.status).toBe(404);
+  });
+});

@@ -84,33 +84,6 @@ export async function getThreadById(threadId: string): Promise<Thread | null> {
   }
 }
 
-// FUTURE?: Possibly needed later for admins creating threads.
-// export async function createThread(
-//   categoryId: string,
-//   title: string,
-//   authorId: string,
-// ): Promise<Thread> {
-//   const client = await pool.connect();
-//   try {
-//     const result = await client.query(
-//       `INSERT INTO threads (category_id, title, author_id)
-//        VALUES ($1, $2, $3)
-//        RETURNING id`,
-//       [categoryId, title, authorId],
-//     );
-//     const thread = await getThreadById(result.rows[0].id);
-//     if (!thread) {
-//       throw new Error("Failed to retrieve newly created thread");
-//     }
-//     return thread;
-//   } catch (error) {
-//     console.error(`Error creating thread in category ${categoryId}:`, error);
-//     throw error;
-//   } finally {
-//     client.release();
-//   }
-// }
-
 export async function createThreadWithPost(
   categoryId: string,
   title: string,
@@ -144,6 +117,39 @@ export async function createThreadWithPost(
       `Error creating thread with post in category ${categoryId}:`,
       error,
     );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function updateThread(
+  threadId: string,
+  title: string,
+): Promise<Thread> {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `UPDATE threads SET title = $1, updated_at = NOW() WHERE id = $2`,
+      [title, threadId],
+    );
+    const thread = await getThreadById(threadId);
+    if (!thread) throw new Error("Failed to retrieve updated thread");
+    return thread;
+  } catch (error) {
+    console.error(`Error updating thread ${threadId}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function deleteThread(threadId: string): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`DELETE FROM threads WHERE id = $1`, [threadId]);
+  } catch (error) {
+    console.error(`Error deleting thread ${threadId}:`, error);
     throw error;
   } finally {
     client.release();

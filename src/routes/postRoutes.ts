@@ -1,5 +1,10 @@
 import express from "express";
-import { createPost } from "../repositories/postRepository";
+import {
+  createPost,
+  getPostById,
+  updatePost,
+  deletePost,
+} from "../repositories/postRepository";
 import { getThreadById } from "../repositories/threadRepository";
 import { authenticateToken } from "../middleware/authenticate";
 
@@ -14,7 +19,7 @@ router.post("/posts", authenticateToken, async (req, res) => {
       return res.status(400).json({
         error: {
           message: "Thread ID and content are required",
-          code: "MISSING_FIELDS",
+          code: "VALIDATION_ERROR",
         },
       });
     }
@@ -45,7 +50,89 @@ router.post("/posts", authenticateToken, async (req, res) => {
     res.status(500).json({
       error: {
         message: "Internal server error",
-        code: "INTERNAL_SERVER_ERROR",
+        code: "DATABASE_ERROR",
+      },
+    });
+  }
+});
+
+router.patch("/posts/:id", authenticateToken, async (req, res) => {
+  try {
+    const id = req.params.id as string;
+    const { content } = req.body;
+
+    if (!content || content.trim() === "") {
+      return res.status(400).json({
+        error: {
+          message: "Content is required",
+          code: "VALIDATION_ERROR",
+        },
+      });
+    }
+
+    const post = await getPostById(id);
+    if (!post) {
+      return res.status(404).json({
+        error: {
+          message: "Post not found",
+          code: "POST_NOT_FOUND",
+        },
+      });
+    }
+
+    if (req.user!.role !== "admin" && post.author.id !== req.user!.id) {
+      return res.status(403).json({
+        error: {
+          message: "Forbidden",
+          code: "FORBIDDEN",
+        },
+      });
+    }
+
+    const updated = await updatePost(id, content);
+    res.json({ data: updated });
+  } catch (error) {
+    console.error("Error updating post:", error);
+    res.status(500).json({
+      error: {
+        message: "Internal server error",
+        code: "DATABASE_ERROR",
+      },
+    });
+  }
+});
+
+router.delete("/posts/:id", authenticateToken, async (req, res) => {
+  try {
+    const id = req.params.id as string;
+
+    const post = await getPostById(id);
+    if (!post) {
+      return res.status(404).json({
+        error: {
+          message: "Post not found",
+          code: "POST_NOT_FOUND",
+        },
+      });
+    }
+
+    if (req.user!.role !== "admin" && post.author.id !== req.user!.id) {
+      return res.status(403).json({
+        error: {
+          message: "Forbidden",
+          code: "FORBIDDEN",
+        },
+      });
+    }
+
+    await deletePost(id);
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    res.status(500).json({
+      error: {
+        message: "Internal server error",
+        code: "DATABASE_ERROR",
       },
     });
   }

@@ -28,9 +28,13 @@ describe("POST /api/categories", () => {
   });
 
   afterEach(async () => {
-    await pool.query(`DELETE FROM categories WHERE name = $1`, ["Test Category"],);
+    await pool.query(`DELETE FROM categories WHERE name = $1`, [
+      "Test Category",
+    ]);
     await pool.query(`DELETE FROM users WHERE email = $1`, [TEST_USER.email]);
-    await pool.query(`DELETE FROM users WHERE email = $1`, ["memberuser@example.com"]);
+    await pool.query(`DELETE FROM users WHERE email = $1`, [
+      "memberuser@example.com",
+    ]);
   });
 
   it("Should return 201 and create a new category", async () => {
@@ -90,5 +94,96 @@ describe("POST /api/categories", () => {
       });
 
     expect(res.status).toBe(400);
+  });
+});
+
+const DEL_ADMIN_USER = {
+  username: "del_cat_admin",
+  email: "del.cat.admin@example.com",
+  password: "password123",
+};
+
+const DEL_MEMBER_USER = {
+  username: "del_cat_member",
+  email: "del.cat.member@example.com",
+  password: "password123",
+};
+
+describe("DELETE /api/categories/:id", () => {
+  let adminToken: string;
+  let memberToken: string;
+  let categoryId: string;
+
+  const ADMIN_USER = {
+    username: "deletecategoryadmin",
+    email: "deletecategoryadmin@example.com",
+    password: "password123",
+  };
+
+  const MEMBER_USER = {
+    username: "deletecategorymember",
+    email: "deletecategorymember@example.com",
+    password: "password123",
+  };
+
+  beforeEach(async () => {
+    await request(app).post("/api/auth/register").send(ADMIN_USER);
+    await pool.query(`UPDATE users SET role = 'admin' WHERE email = $1`, [
+      ADMIN_USER.email,
+    ]);
+    const adminLogin = await request(app).post("/api/auth/login").send({
+      email: ADMIN_USER.email,
+      password: ADMIN_USER.password,
+    });
+    adminToken = adminLogin.body.data.accessToken;
+
+    await request(app).post("/api/auth/register").send(MEMBER_USER);
+    const memberLogin = await request(app).post("/api/auth/login").send({
+      email: MEMBER_USER.email,
+      password: MEMBER_USER.password,
+    });
+    memberToken = memberLogin.body.data.accessToken;
+
+    const catRes = await request(app)
+      .post("/api/categories")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ name: "Delete Me", description: "Temporary category" });
+    categoryId = catRes.body.data.id;
+  });
+
+  afterEach(async () => {
+    await pool.query(`DELETE FROM categories WHERE id = $1`, [categoryId]);
+    await pool.query(`DELETE FROM users WHERE email = $1`, [ADMIN_USER.email]);
+    await pool.query(`DELETE FROM users WHERE email = $1`, [MEMBER_USER.email]);
+  });
+
+  it("Should return 204 when admin deletes a category", async () => {
+    const res = await request(app)
+      .delete(`/api/categories/${categoryId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(204);
+  });
+
+  it("Should return 401 if no token is provided", async () => {
+    const res = await request(app).delete(`/api/categories/${categoryId}`);
+
+    expect(res.status).toBe(401);
+  });
+
+  it("Should return 403 if user is not an admin", async () => {
+    const res = await request(app)
+      .delete(`/api/categories/${categoryId}`)
+      .set("Authorization", `Bearer ${memberToken}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  it("Should return 404 if category does not exist", async () => {
+    const res = await request(app)
+      .delete(`/api/categories/00000000-0000-0000-0000-000000000000`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(404);
   });
 });

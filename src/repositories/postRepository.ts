@@ -81,3 +81,36 @@ export async function createPost(
     client.release();
   }
 }
+
+export async function updatePost(
+  postId: string,
+  content: string,
+): Promise<Post> {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `UPDATE posts SET content = $1, updated_at = NOW() WHERE id = $2`,
+      [content, postId],
+    );
+    const post = await getPostById(postId);
+    if (!post) throw new Error("Failed to retrieve updated post");
+    return post;
+  } catch (error) {
+    console.error(`Error updating post ${postId}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function deletePost(postId: string): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`DELETE FROM posts WHERE id = $1`, [postId]);
+  } catch (error) {
+    console.error(`Error deleting post ${postId}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
