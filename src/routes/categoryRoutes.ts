@@ -4,6 +4,7 @@ import {
   getCategoryBySlug,
   getCategoryById,
   createCategory,
+  updateCategory,
   deleteCategory,
 } from "../repositories/categoryRepository";
 import { Category } from "../types/category";
@@ -143,6 +144,70 @@ router.delete(
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting category:", error);
+      res.status(500).json({
+        error: {
+          message: "Internal server error",
+          code: "DATABASE_ERROR",
+        },
+      });
+    }
+  },
+);
+
+router.patch(
+  "/categories/:id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const id = req.params.id as string;
+      const { name, description } = req.body;
+
+      if (name === undefined && description === undefined) {
+        return res.status(400).json({
+          error: {
+            message: "At least one of name or description must be provided",
+            code: "VALIDATION_ERROR",
+          },
+        });
+      }
+
+      if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
+        return res.status(400).json({
+          error: {
+            message: "Category name must be a non-empty string",
+            code: "INVALID_CATEGORY_NAME",
+          },
+        });
+      }
+
+      const category = await getCategoryById(id);
+      if (!category) {
+        return res.status(404).json({
+          error: {
+            message: "Category not found",
+            code: "CATEGORY_NOT_FOUND",
+          },
+        });
+      }
+
+      const fields: { name?: string; slug?: string; description?: string } = {};
+      if (name !== undefined) {
+        const trimmedName = name.trim();
+        fields.name = trimmedName;
+        fields.slug = trimmedName
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9\-]/g, "");
+      }
+      if (description !== undefined) {
+        fields.description = description;
+      }
+
+      const updated = await updateCategory(id, fields);
+      res.json({ data: updated });
+    } catch (error) {
+      console.error("Error updating category:", error);
       res.status(500).json({
         error: {
           message: "Internal server error",

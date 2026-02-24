@@ -83,3 +83,40 @@ export async function deleteCategory(categoryId: string): Promise<void> {
     client.release();
   }
 }
+
+export async function updateCategory(
+  categoryId: string,
+  fields: { name?: string; slug?: string; description?: string },
+): Promise<Category> {
+  const client = await pool.connect();
+  try {
+    const setClauses: string[] = [];
+    const values: unknown[] = [];
+    let paramIndex = 1;
+
+    if (fields.slug !== undefined) {
+      setClauses.push(`slug = $${paramIndex++}`);
+      values.push(fields.slug);
+    }
+    if (fields.name !== undefined) {
+      setClauses.push(`name = $${paramIndex++}`);
+      values.push(fields.name);
+    }
+    if (fields.description !== undefined) {
+      setClauses.push(`description = $${paramIndex++}`);
+      values.push(fields.description);
+    }
+
+    values.push(categoryId);
+    const result = await client.query(
+      `UPDATE categories SET ${setClauses.join(", ")} WHERE id = $${paramIndex} RETURNING id, slug, name, description`,
+      values,
+    );
+    return result.rows[0];
+  } catch (error) {
+    console.error(`Error updating category ${categoryId}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}

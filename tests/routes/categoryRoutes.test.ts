@@ -187,3 +187,118 @@ describe("DELETE /api/categories/:id", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("PATCH /api/categories/:id", () => {
+  let adminToken: string;
+  let memberToken: string;
+  let categoryId: string;
+
+  const ADMIN_USER = {
+    username: "updatecategoryadmin",
+    email: "updatecategoryadmin@example.com",
+    password: "password123",
+  };
+
+  const MEMBER_USER = {
+    username: "updatecategorymember",
+    email: "updatecategorymember@example.com",
+    password: "password123",
+  };
+
+  beforeEach(async () => {
+    await request(app).post("/api/auth/register").send(ADMIN_USER);
+    await pool.query(`UPDATE users SET role = 'admin' WHERE email = $1`, [
+      ADMIN_USER.email,
+    ]);
+    const adminLogin = await request(app).post("/api/auth/login").send({
+      email: ADMIN_USER.email,
+      password: ADMIN_USER.password,
+    });
+    adminToken = adminLogin.body.data.accessToken;
+
+    await request(app).post("/api/auth/register").send(MEMBER_USER);
+    const memberLogin = await request(app).post("/api/auth/login").send({
+      email: MEMBER_USER.email,
+      password: MEMBER_USER.password,
+    });
+    memberToken = memberLogin.body.data.accessToken;
+
+    const catRes = await request(app)
+      .post("/api/categories")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ name: "Original Name", description: "Original description" });
+    categoryId = catRes.body.data.id;
+  });
+
+  afterEach(async () => {
+    await pool.query(`DELETE FROM categories WHERE id = $1`, [categoryId]);
+    await pool.query(`DELETE FROM users WHERE email = $1`, [ADMIN_USER.email]);
+    await pool.query(`DELETE FROM users WHERE email = $1`, [MEMBER_USER.email]);
+  });
+
+  it("Should return 200 and update the category name and slug", async () => {
+    const res = await request(app)
+      .patch(`/api/categories/${categoryId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ name: "Updated Name" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.name).toBe("Updated Name");
+    expect(res.body.data.slug).toBe("updated-name");
+  });
+
+  it("Should return 200 and update only the description", async () => {
+    const res = await request(app)
+      .patch(`/api/categories/${categoryId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ description: "New description" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.description).toBe("New description");
+    expect(res.body.data.name).toBe("Original Name");
+  });
+
+  it("Should return 400 if neither name nor description is provided", async () => {
+    const res = await request(app)
+      .patch(`/api/categories/${categoryId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  it("Should return 400 if name is an empty string", async () => {
+    const res = await request(app)
+      .patch(`/api/categories/${categoryId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ name: "   " });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("Should return 401 if no token is provided", async () => {
+    const res = await request(app)
+      .patch(`/api/categories/${categoryId}`)
+      .send({ name: "Updated Name" });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("Should return 403 if user is not an admin", async () => {
+    const res = await request(app)
+      .patch(`/api/categories/${categoryId}`)
+      .set("Authorization", `Bearer ${memberToken}`)
+      .send({ name: "Updated Name" });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("Should return 404 if category does not exist", async () => {
+    const res = await request(app)
+      .patch(`/api/categories/00000000-0000-0000-0000-000000000000`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ name: "Updated Name" });
+
+    expect(res.status).toBe(404);
+  });
+});
