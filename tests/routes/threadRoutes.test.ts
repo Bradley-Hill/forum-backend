@@ -330,3 +330,241 @@ describe("DELETE /api/threads/:id", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("PATCH /api/threads/:id/lock", () => {
+  let authorToken: string;
+  let adminToken: string;
+  let otherToken: string;
+  let threadId: string;
+
+  beforeEach(async () => {
+    await request(app).post("/api/auth/register").send(AUTHOR_USER);
+    const authorLogin = await request(app).post("/api/auth/login").send({
+      email: AUTHOR_USER.email,
+      password: AUTHOR_USER.password,
+    });
+    authorToken = authorLogin.body.data.accessToken;
+
+    await request(app).post("/api/auth/register").send(ADMIN_USER);
+    await pool.query(`UPDATE users SET role = 'admin' WHERE email = $1`, [
+      ADMIN_USER.email,
+    ]);
+    const adminLogin = await request(app).post("/api/auth/login").send({
+      email: ADMIN_USER.email,
+      password: ADMIN_USER.password,
+    });
+    adminToken = adminLogin.body.data.accessToken;
+
+    await request(app).post("/api/auth/register").send(OTHER_USER);
+    const otherLogin = await request(app).post("/api/auth/login").send({
+      email: OTHER_USER.email,
+      password: OTHER_USER.password,
+    });
+    otherToken = otherLogin.body.data.accessToken;
+
+    const threadRes = await request(app)
+      .post("/api/threads")
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({
+        category_id: EXISTING_CATEGORY_ID,
+        title: "Thread to lock",
+        content: "Thread content",
+      });
+    threadId = threadRes.body.data.id;
+  });
+
+  afterEach(async () => {
+    await pool.query(`DELETE FROM threads WHERE id = $1`, [threadId]);
+    await pool.query(`DELETE FROM users WHERE email = ANY($1)`, [
+      [AUTHOR_USER.email, ADMIN_USER.email, OTHER_USER.email],
+    ]);
+  });
+
+  it("Should return 200 and lock the thread", async () => {
+    const res = await request(app)
+      .patch(`/api/threads/${threadId}/lock`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ is_locked: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.is_locked).toBe(true);
+  });
+
+  it("Should return 200 and unlock the thread", async () => {
+    await request(app)
+      .patch(`/api/threads/${threadId}/lock`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ is_locked: true });
+
+    const res = await request(app)
+      .patch(`/api/threads/${threadId}/lock`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ is_locked: false });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.is_locked).toBe(false);
+  });
+
+  it("Should return 400 if is_locked is not a boolean", async () => {
+    const res = await request(app)
+      .patch(`/api/threads/${threadId}/lock`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ is_locked: "yes" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("Should return 401 if no token is provided", async () => {
+    const res = await request(app)
+      .patch(`/api/threads/${threadId}/lock`)
+      .send({ is_locked: true });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("Should return 403 if user is not an admin", async () => {
+    const res = await request(app)
+      .patch(`/api/threads/${threadId}/lock`)
+      .set("Authorization", `Bearer ${otherToken}`)
+      .send({ is_locked: true });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("Should return 403 if user is the author but not admin", async () => {
+    const res = await request(app)
+      .patch(`/api/threads/${threadId}/lock`)
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({ is_locked: true });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("Should return 404 if thread does not exist", async () => {
+    const res = await request(app)
+      .patch(`/api/threads/00000000-0000-0000-0000-000000000000/lock`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ is_locked: true });
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("PATCH /api/threads/:id/sticky", () => {
+  let authorToken: string;
+  let adminToken: string;
+  let otherToken: string;
+  let threadId: string;
+
+  beforeEach(async () => {
+    await request(app).post("/api/auth/register").send(AUTHOR_USER);
+    const authorLogin = await request(app).post("/api/auth/login").send({
+      email: AUTHOR_USER.email,
+      password: AUTHOR_USER.password,
+    });
+    authorToken = authorLogin.body.data.accessToken;
+
+    await request(app).post("/api/auth/register").send(ADMIN_USER);
+    await pool.query(`UPDATE users SET role = 'admin' WHERE email = $1`, [
+      ADMIN_USER.email,
+    ]);
+    const adminLogin = await request(app).post("/api/auth/login").send({
+      email: ADMIN_USER.email,
+      password: ADMIN_USER.password,
+    });
+    adminToken = adminLogin.body.data.accessToken;
+
+    await request(app).post("/api/auth/register").send(OTHER_USER);
+    const otherLogin = await request(app).post("/api/auth/login").send({
+      email: OTHER_USER.email,
+      password: OTHER_USER.password,
+    });
+    otherToken = otherLogin.body.data.accessToken;
+
+    const threadRes = await request(app)
+      .post("/api/threads")
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({
+        category_id: EXISTING_CATEGORY_ID,
+        title: "Thread to sticky",
+        content: "Thread content",
+      });
+    threadId = threadRes.body.data.id;
+  });
+
+  afterEach(async () => {
+    await pool.query(`DELETE FROM threads WHERE id = $1`, [threadId]);
+    await pool.query(`DELETE FROM users WHERE email = ANY($1)`, [
+      [AUTHOR_USER.email, ADMIN_USER.email, OTHER_USER.email],
+    ]);
+  });
+
+  it("Should return 200 and sticky the thread", async () => {
+    const res = await request(app)
+      .patch(`/api/threads/${threadId}/sticky`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ is_sticky: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.is_sticky).toBe(true);
+  });
+
+  it("Should return 200 and un-sticky the thread", async () => {
+    await request(app)
+      .patch(`/api/threads/${threadId}/sticky`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ is_sticky: true });
+
+    const res = await request(app)
+      .patch(`/api/threads/${threadId}/sticky`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ is_sticky: false });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.is_sticky).toBe(false);
+  });
+
+  it("Should return 400 if is_sticky is not a boolean", async () => {
+    const res = await request(app)
+      .patch(`/api/threads/${threadId}/sticky`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ is_sticky: "yes" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("Should return 401 if no token is provided", async () => {
+    const res = await request(app)
+      .patch(`/api/threads/${threadId}/sticky`)
+      .send({ is_sticky: true });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("Should return 403 if user is not an admin", async () => {
+    const res = await request(app)
+      .patch(`/api/threads/${threadId}/sticky`)
+      .set("Authorization", `Bearer ${otherToken}`)
+      .send({ is_sticky: true });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("Should return 403 if user is the author but not admin", async () => {
+    const res = await request(app)
+      .patch(`/api/threads/${threadId}/sticky`)
+      .set("Authorization", `Bearer ${authorToken}`)
+      .send({ is_sticky: true });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("Should return 404 if thread does not exist", async () => {
+    const res = await request(app)
+      .patch(`/api/threads/00000000-0000-0000-0000-000000000000/sticky`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ is_sticky: true });
+
+    expect(res.status).toBe(404);
+  });
+});

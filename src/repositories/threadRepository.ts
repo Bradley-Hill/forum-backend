@@ -144,6 +144,48 @@ export async function updateThread(
   }
 }
 
+export async function setThreadLocked(
+  threadId: string,
+  isLocked: boolean,
+): Promise<Thread> {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `UPDATE threads SET is_locked = $1, updated_at = NOW() WHERE id = $2`,
+      [isLocked, threadId],
+    );
+    const thread = await getThreadById(threadId);
+    if (!thread) throw new Error("Failed to retrieve updated thread");
+    return thread;
+  } catch (error) {
+    console.error(`Error setting locked on thread ${threadId}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function setThreadSticky(
+  threadId: string,
+  isSticky: boolean,
+): Promise<Thread> {
+  const client = await pool.connect();
+  try {
+    await client.query(
+      `UPDATE threads SET is_sticky = $1, updated_at = NOW() WHERE id = $2`,
+      [isSticky, threadId],
+    );
+    const thread = await getThreadById(threadId);
+    if (!thread) throw new Error("Failed to retrieve updated thread");
+    return thread;
+  } catch (error) {
+    console.error(`Error setting sticky on thread ${threadId}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function deleteThread(threadId: string): Promise<void> {
   const client = await pool.connect();
   try {
