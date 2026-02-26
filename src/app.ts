@@ -1,4 +1,6 @@
 import Express from "express";
+import helmet from "helmet";
+import cors from "cors";
 import categoryRoutes from "./routes/categoryRoutes";
 import threadRoutes from "./routes/threadRoutes";
 import authRoutes from "./routes/authRoutes";
@@ -9,6 +11,8 @@ const app = Express();
 const port = process.env.PORT || 3000;
 
 app.use(Express.json());
+app.use(helmet());
+app.use(cors());
 app.use('/api/auth', authRoutes);
 app.use('/api', threadRoutes);
 app.use('/api', categoryRoutes);
