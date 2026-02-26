@@ -105,7 +105,7 @@ describe("POST /api/threads", () => {
     expect(res.status).toBe(400);
   });
 
-  it("Should return 500 if category_id is invalid", async () => {
+  it("Should return 400 if category_id is invalid", async () => {
     const res = await request(app)
       .post("/api/threads")
       .set("Authorization", `Bearer ${accessToken}`)
@@ -115,7 +115,7 @@ describe("POST /api/threads", () => {
         content: "Test content",
       });
 
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(400);
   });
 });
 
