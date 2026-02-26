@@ -1,5 +1,12 @@
 import { getPostsByThread } from "../repositories/postRepository";
 import {
+  threadCreateSchema,
+  threadUpdateSchema,
+  threadLockSchema,
+  threadStickySchema,
+} from "@Bradley-Hill/forum-schemas";
+import { paginationSchema } from "@Bradley-Hill/forum-schemas";
+import {
   getThreadById,
   createThreadWithPost,
   updateThread,
@@ -9,7 +16,6 @@ import {
 } from "../repositories/threadRepository";
 import express from "express";
 import { Thread } from "../types/thread";
-import { validatePaginationParams } from "../utils/pagination";
 import { authenticateToken } from "../middleware/authenticate";
 import { requireAdmin } from "../middleware/requireAdmin";
 
@@ -19,15 +25,21 @@ router.get("/threads/:id", async (req, res) => {
   try {
     const id = req.params.id as string;
 
-    const pagination = validatePaginationParams(
-      req.query.page,
-      req.query.pageSize,
-    );
-    if (!pagination.valid) {
-      return res.status(400).json({ error: pagination.error });
+    const parseResult = paginationSchema.safeParse({
+      page: req.query.page as string | undefined,
+      pageSize: req.query.pageSize as string | undefined,
+    });
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: {
+          message: "Validation error",
+          code: "VALIDATION_ERROR",
+          details: parseResult.error.issues,
+        },
+      });
     }
 
-    const { page, pageSize } = pagination;
+    const { page, pageSize } = parseResult.data;
 
     const thread = await getThreadById(id);
     if (!thread) {
@@ -84,39 +96,25 @@ router.get("/threads/:id", async (req, res) => {
 });
 
 router.post("/threads", authenticateToken, async (req, res) => {
+  const parseresult = threadCreateSchema.safeParse(req.body);
+  if (!parseresult.success) {
+    return res.status(400).json({
+      error: {
+        message: "Validation error",
+        code: "VALIDATION_ERROR",
+        details: parseresult.error.issues,
+      },
+    });
+  }
   try {
-    const { title, category_id, content } = req.body;
+    const { title, category_id, content } = parseresult.data;
     const userId = req.user?.id;
 
-    if (!title || title.trim() === "") {
-      return res.status(400).json({
-        error: {
-          message: "Title is required",
-          code: "VALIDATION_ERROR",
-        },
-      });
-    }
-    if (!category_id) {
-      return res.status(400).json({
-        error: {
-          message: "Category ID is required",
-          code: "VALIDATION_ERROR",
-        },
-      });
-    }
     if (!userId) {
       return res.status(401).json({
         error: {
           message: "Authentication required",
           code: "AUTHENTICATION_REQUIRED",
-        },
-      });
-    }
-    if (!content || content.trim() === "") {
-      return res.status(400).json({
-        error: {
-          message: "Content is required",
-          code: "VALIDATION_ERROR",
         },
       });
     }
@@ -142,18 +140,19 @@ router.post("/threads", authenticateToken, async (req, res) => {
 });
 
 router.patch("/threads/:id", authenticateToken, async (req, res) => {
+  const parseResult = threadUpdateSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({
+      error: {
+        message: "Validation error",
+        code: "VALIDATION_ERROR",
+        details: parseResult.error.issues,
+      },
+    });
+  }
   try {
     const id = req.params.id as string;
-    const { title } = req.body;
-
-    if (!title || title.trim() === "") {
-      return res.status(400).json({
-        error: {
-          message: "Title is required",
-          code: "VALIDATION_ERROR",
-        },
-      });
-    }
+    const { title } = parseResult.data;
 
     const thread = await getThreadById(id);
     if (!thread) {
@@ -165,11 +164,14 @@ router.patch("/threads/:id", authenticateToken, async (req, res) => {
       });
     }
 
-    if (req.user!.role !== "admin" && thread.author.id !== req.user!.id) {
+    if (
+      req.user!.role !== "admin" &&
+      (thread.author.id !== req.user!.id || thread.is_locked)
+    ) {
       return res.status(403).json({
         error: {
-          message: "Forbidden",
-          code: "FORBIDDEN",
+          message: thread.is_locked ? "Thread is locked" : "Forbidden",
+          code: thread.is_locked ? "THREAD_LOCKED" : "FORBIDDEN",
         },
       });
     }

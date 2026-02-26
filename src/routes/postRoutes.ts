@@ -1,4 +1,5 @@
 import express from "express";
+import {postCreateSchema, postUpdateSchema} from "@Bradley-Hill/forum-schemas";
 import {
   createPost,
   getPostById,
@@ -11,18 +12,19 @@ import { authenticateToken } from "../middleware/authenticate";
 const router = express.Router();
 
 router.post("/posts", authenticateToken, async (req, res) => {
+  const parseResult = postCreateSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({
+      error: {
+        message: "Validation error",
+        code: "VALIDATION_ERROR",
+        details: parseResult.error.issues,
+      },
+    });
+  }
   try {
-    const { thread_id, content } = req.body;
+    const { thread_id, content } = parseResult.data;
     const authorId = req.user!.id;
-
-    if (!thread_id || !content || content.trim() === "") {
-      return res.status(400).json({
-        error: {
-          message: "Thread ID and content are required",
-          code: "VALIDATION_ERROR",
-        },
-      });
-    }
 
     const thread = await getThreadById(thread_id);
     if (!thread) {
@@ -57,18 +59,19 @@ router.post("/posts", authenticateToken, async (req, res) => {
 });
 
 router.patch("/posts/:id", authenticateToken, async (req, res) => {
+  const parseResult = postUpdateSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({
+      error: {
+        message: "Validation error",
+        code: "VALIDATION_ERROR",
+        details: parseResult.error.issues,
+      },
+    });
+  }
   try {
     const id = req.params.id as string;
-    const { content } = req.body;
-
-    if (!content || content.trim() === "") {
-      return res.status(400).json({
-        error: {
-          message: "Content is required",
-          code: "VALIDATION_ERROR",
-        },
-      });
-    }
+    const { content } = parseResult.data;
 
     const post = await getPostById(id);
     if (!post) {

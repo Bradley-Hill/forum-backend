@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/Bradley-Hill/forum-backend#readme",
   "dependencies": {
-    "@Bradley-Hill/forum-schemas": "^1.0.0",
+    "@Bradley-Hill/forum-schemas": "^1.0.4",
     "bcrypt": "^6.0.0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",

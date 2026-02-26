@@ -1,5 +1,10 @@
 import express from "express";
 import {
+  paginationSchema,
+  categoryCreateSchema,
+  categoryUpdateSchema,
+} from "@Bradley-Hill/forum-schemas";
+import {
   getAllCategories,
   getCategoryBySlug,
   getCategoryById,
@@ -9,7 +14,6 @@ import {
 } from "../repositories/categoryRepository";
 import { Category } from "../types/category";
 import { getThreadsByCategory } from "../repositories/threadRepository";
-import { validatePaginationParams } from "../utils/pagination";
 import { authenticateToken } from "../middleware/authenticate";
 import { requireAdmin } from "../middleware/requireAdmin";
 
@@ -31,18 +35,13 @@ router.get("/categories", async (req, res) => {
 });
 
 router.get("/categories/:slug/threads", async (req, res) => {
+  const parseResult = paginationSchema.safeParse(req.query);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: parseResult.error.issues });
+  }
+  const { page, pageSize } = parseResult.data;
   try {
     const slug = req.params.slug as string;
-
-    const pagination = validatePaginationParams(
-      req.query.page,
-      req.query.pageSize,
-    );
-    if (!pagination.valid) {
-      return res.status(400).json({ error: pagination.error });
-    }
-
-    const { page, pageSize } = pagination;
 
     const category = await getCategoryBySlug(slug);
     if (!category) {
@@ -92,16 +91,12 @@ router.post(
   authenticateToken,
   requireAdmin,
   async (req, res) => {
+    const parseResult = categoryCreateSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({ error: parseResult.error.issues });
+    }
     try {
-      const { name, description } = req.body;
-      if (!name || typeof name !== "string" || name.trim() === "") {
-        return res.status(400).json({
-          error: {
-            message: "Category name is required and must be a non-empty string",
-            code: "INVALID_CATEGORY_NAME",
-          },
-        });
-      }
+      const { name, description } = parseResult.data;
       const trimmedName = name.trim();
       const slug = trimmedName
         .toLowerCase()
@@ -159,27 +154,13 @@ router.patch(
   authenticateToken,
   requireAdmin,
   async (req, res) => {
+    const parseResult = categoryUpdateSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({ error: parseResult.error.issues });
+    }
+    const { name, description } = parseResult.data;
     try {
       const id = req.params.id as string;
-      const { name, description } = req.body;
-
-      if (name === undefined && description === undefined) {
-        return res.status(400).json({
-          error: {
-            message: "At least one of name or description must be provided",
-            code: "VALIDATION_ERROR",
-          },
-        });
-      }
-
-      if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
-        return res.status(400).json({
-          error: {
-            message: "Category name must be a non-empty string",
-            code: "INVALID_CATEGORY_NAME",
-          },
-        });
-      }
 
       const category = await getCategoryById(id);
       if (!category) {

@@ -1,6 +1,6 @@
 import express from "express";
 import bcrypt from "bcrypt";
-import pool from "../db/pool";
+import { userUpdateSchema} from "@Bradley-Hill/forum-schemas/user";
 import {
   findUserByUsername,
   findUserByEmail,
@@ -38,30 +38,19 @@ router.get("/users/:username", async (req, res) => {
 });
 
 router.patch("/users/me", authenticateToken, async (req, res) => {
+  const parseResult = userUpdateSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({
+      error: parseResult.error.issues,
+    });
+  }
   try {
     const userId = req.user!.id;
-    const { email, currentPassword, newPassword } = req.body;
-
-    if (email === undefined && newPassword === undefined) {
-      return res.status(400).json({
-        error: {
-          message: "At least one of email or newPassword must be provided",
-          code: "VALIDATION_ERROR",
-        },
-      });
-    }
+    const { email, currentPassword, newPassword } = parseResult.data;
 
     const fields: { email?: string; password_hash?: string } = {};
 
     if (email !== undefined) {
-      if (typeof email !== "string" || email.trim() === "") {
-        return res.status(400).json({
-          error: {
-            message: "Email must be a non-empty string",
-            code: "VALIDATION_ERROR",
-          },
-        });
-      }
       const existingUser = await findUserByEmail(email.trim());
       if (existingUser && existingUser.id !== userId) {
         return res.status(409).json({

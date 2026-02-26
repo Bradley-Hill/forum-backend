@@ -1,3 +1,4 @@
+import {userRegisterSchema, userLoginSchema} from "@Bradley-Hill/forum-schemas/user";
 import {
   findRefreshToken,
   findUserByEmail,
@@ -11,21 +12,20 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { parse } from "path";
 
 const router = Router();
 
 router.post("/register", async (req, res) => {
-  const { username, email, password } = req.body;
+  const parseResult = userRegisterSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({
+      error: parseResult.error.issues
+    });
+  }
+  const { username, email, password } = parseResult.data;
 
   try {
-    if (!username || !email || !password) {
-      return res.status(400).json({
-        error: {
-          message: "Username, email and password are required",
-          code: "VALIDATION_ERROR",
-        },
-      });
-    }
 
     if (await findUserByUsername(username)) {
       return res.status(409).json({
@@ -60,17 +60,15 @@ router.post("/register", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const parseResult = userLoginSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({
+      error: parseResult.error.issues
+    });
+  }
+  const { email, password } = parseResult.data;
 
   try {
-    if (!email || !password) {
-      return res.status(400).json({
-        error: {
-          message: "Email and password are required",
-          code: "VALIDATION_ERROR",
-        },
-      });
-    }
 
     const user = await findUserByEmail(email);
     if (!user) {
