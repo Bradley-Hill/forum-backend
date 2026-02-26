@@ -1,4 +1,5 @@
 import {userRegisterSchema, userLoginSchema} from "@Bradley-Hill/forum-schemas/user";
+import { rateLimiter } from "../middleware/rateLimiting";
 import {
   findRefreshToken,
   findUserByEmail,
@@ -16,7 +17,7 @@ import { parse } from "path";
 
 const router = Router();
 
-router.post("/register", async (req, res) => {
+router.post("/register", rateLimiter, async (req, res) => {
   const parseResult = userRegisterSchema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({
@@ -59,7 +60,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login",rateLimiter, async (req, res) => {
   const parseResult = userLoginSchema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({
@@ -110,7 +111,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.post("/refresh", async (req, res) => {
+router.post("/refresh",rateLimiter, async (req, res) => {
     const { refreshToken } = req.body;
     try {
         if (!refreshToken) {

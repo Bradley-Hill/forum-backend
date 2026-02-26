@@ -197,3 +197,17 @@ describe("POST /api/auth/logout", () => {
     expect(res.status).toBe(400);
   });
 });
+
+/* Keeping the test here, but it wont work with the current rate limiter setup since it is disabled in test environment.
+ To properly test this, we would need to mock the rate limiter or adjust the implementation to allow testing it in the test environment.
+  For now, this test is skipped.*/
+describe("Rate Limiting on Auth Routes",() => {
+  it.skip("Should block requests after exceeding the limit", async () => {
+    for (let i = 0; i < 10; i++){
+      await request(app).post("/api/auth/login").send({email: "test@example.com", password: "wrongpassword"});
+    }
+    const res = await request(app).post("/api/auth/login").send({email: "test@example.com", password: "wrongpassword"});
+    expect(res.status).toBe(429);
+    expect(res.text).toContain("Too many requests from this IP, please try again after 1 minute");
+  })
+});
