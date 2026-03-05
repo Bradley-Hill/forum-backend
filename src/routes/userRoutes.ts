@@ -6,6 +6,7 @@ import {
   findUserByEmail,
   updateUser,
   findUserWithHashById,
+  deleteUser,
 } from "../repositories/userRepository";
 import { authenticateToken } from "../middleware/authenticate";
 
@@ -100,6 +101,22 @@ router.patch("/users/me", authenticateToken, async (req, res) => {
     res.json({ data: updated });
   } catch (error) {
     console.error("Error updating user profile:", error);
+    res.status(500).json({
+      error: {
+        message: "Internal server error",
+        code: "DATABASE_ERROR",
+      },
+    });
+  }
+});
+
+router.delete("/users/me", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    await deleteUser(userId);
+    res.status(204).send();
+  } catch (error) {
+    console.error("Error deleting user account:", error);
     res.status(500).json({
       error: {
         message: "Internal server error",

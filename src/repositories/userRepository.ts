@@ -183,3 +183,15 @@ export async function findUserWithHashById(id: string): Promise<User | null> {
     client.release();
   }
 }
+
+export async function deleteUser(userId: string): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("DELETE FROM users WHERE id = $1", [userId]);
+  } catch (error) {
+    console.error(`Error deleting user ${userId}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
