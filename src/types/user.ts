@@ -19,3 +19,11 @@ export interface RegisteredUser {
   username: string;
   email: string;
 }
+
+export interface MeUser {
+  id: string;
+  username: string;
+  email: string;
+  role: "member" | "admin";
+  created_at: Date;
+}

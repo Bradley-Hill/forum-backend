@@ -1,5 +1,5 @@
 import pool from "../db/pool";
-import { User, PublicUser, RegisteredUser } from "../types/user";
+import { User, PublicUser, RegisteredUser, MeUser } from "../types/user";
 
 export async function findUserByEmail(email: string): Promise<User | null> {
   const client = await pool.connect();
@@ -178,6 +178,25 @@ export async function findUserWithHashById(id: string): Promise<User | null> {
     return result.rows[0];
   } catch (error) {
     console.error(`Error fetching user with hash by ID ${id}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function findMeById(id: string): Promise<MeUser | null> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      "SELECT id, username, email, role, created_at FROM users WHERE id = $1",
+      [id],
+    );
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return result.rows[0];
+  } catch (error) {
+    console.error(`Error fetching me by ID ${id}:`, error);
     throw error;
   } finally {
     client.release();

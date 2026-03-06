@@ -7,10 +7,35 @@ import {
   updateUser,
   findUserWithHashById,
   deleteUser,
+  findMeById,
 } from "../repositories/userRepository";
 import { authenticateToken } from "../middleware/authenticate";
 
 const router = express.Router();
+
+router.get("/users/me", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    const user = await findMeById(userId);
+    if (!user) {
+      return res.status(404).json({
+        error: {
+          message: "User not found",
+          code: "USER_NOT_FOUND",
+        },
+      });
+    }
+    res.json({ data: user });
+  } catch (error) {
+    console.error("Error fetching current user:", error);
+    res.status(500).json({
+      error: {
+        message: "Internal server error",
+        code: "DATABASE_ERROR",
+      },
+    });
+  }
+});
 
 router.get("/users/:username", async (req, res) => {
   try {
