@@ -18,6 +18,7 @@ export interface RegisteredUser {
   id: string;
   username: string;
   email: string;
+  role: "member" | "admin";
 }
 
 export interface MeUser {

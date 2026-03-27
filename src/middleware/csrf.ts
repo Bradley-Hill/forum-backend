@@ -6,10 +6,10 @@ export function generateCSRFToken(): string {
 }
 
 export function validateCSRFToken(req: Request, res: Response, next: NextFunction) {
-  const csrfTokenFromHeader = req.headers['x-csrf-token'] as string;
+  const csrfTokenFromHeader = req.headers["x-csrf-token"];
   const csrfTokenFromCookie = req.cookies.csrfToken;
 
-  if (!csrfTokenFromHeader) {
+  if (!csrfTokenFromHeader || Array.isArray(csrfTokenFromHeader)) {
     return res.status(403).json({
       error: {
         message: "CSRF token missing from request header",

@@ -19,12 +19,13 @@ import { Thread } from "../types/thread";
 import { authenticateToken } from "../middleware/authenticate";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { validateCSRFToken } from "../middleware/csrf";
+import { validateUUIDParam } from "../middleware/validateParams";
 
 const router = express.Router();
 
-router.get("/threads/:id", async (req, res) => {
+router.get("/threads/:id", validateUUIDParam("id"), async (req, res) => {
   try {
-    const id = req.params.id as string;
+    const id = req.params.id;
 
     const parseResult = paginationSchema.safeParse({
       page: req.query.page as string | undefined,
@@ -140,7 +141,7 @@ router.post("/threads", authenticateToken, validateCSRFToken, async (req, res) =
   }
 });
 
-router.patch("/threads/:id", authenticateToken, validateCSRFToken, async (req, res) => {
+router.patch("/threads/:id", validateUUIDParam("id"), authenticateToken, validateCSRFToken, async (req, res) => {
   const parseResult = threadUpdateSchema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({
@@ -152,7 +153,7 @@ router.patch("/threads/:id", authenticateToken, validateCSRFToken, async (req, r
     });
   }
   try {
-    const id = req.params.id as string;
+    const id = req.params.id;
     const { title } = parseResult.data;
 
     const thread = await getThreadById(id);
@@ -190,9 +191,9 @@ router.patch("/threads/:id", authenticateToken, validateCSRFToken, async (req, r
   }
 });
 
-router.delete("/threads/:id", authenticateToken, validateCSRFToken, async (req, res) => {
+router.delete("/threads/:id", validateUUIDParam("id"), authenticateToken, validateCSRFToken, async (req, res) => {
   try {
-    const id = req.params.id as string;
+    const id = req.params.id;
 
     const thread = await getThreadById(id);
     if (!thread) {
@@ -215,12 +216,13 @@ router.delete("/threads/:id", authenticateToken, validateCSRFToken, async (req, 
 
     router.patch(
       "/threads/:id/lock",
+      validateUUIDParam("id"),
       authenticateToken,
       requireAdmin,
       validateCSRFToken,
       async (req, res) => {
         try {
-          const id = req.params.id as string;
+          const id = req.params.id;
           const { is_locked } = req.body;
 
           if (typeof is_locked !== "boolean") {
@@ -257,7 +259,7 @@ router.delete("/threads/:id", authenticateToken, validateCSRFToken, async (req, 
     );
 
     router.patch(
-      "/threads/:id/sticky",
+      validateUUIDParam("id"),
       authenticateToken,
       requireAdmin,
       validateCSRFToken,

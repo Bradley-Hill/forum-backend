@@ -17,6 +17,7 @@ import { getThreadsByCategory } from "../repositories/threadRepository";
 import { authenticateToken } from "../middleware/authenticate";
 import { requireAdmin } from "../middleware/requireAdmin";
 import { validateCSRFToken } from "../middleware/csrf";
+import { validateUUIDParam } from "../middleware/validateParams";
 
 const router = express.Router();
 
@@ -121,6 +122,7 @@ router.post(
 
 router.delete(
   "/categories/:id",
+  validateUUIDParam("id"),
   authenticateToken,
   requireAdmin,
   validateCSRFToken,
@@ -154,8 +156,10 @@ router.delete(
 
 router.patch(
   "/categories/:id",
+  validateUUIDParam("id"),
   authenticateToken,
   requireAdmin,
+  validateCSRFToken,
   async (req, res) => {
     const parseResult = categoryUpdateSchema.safeParse(req.body);
     if (!parseResult.success) {

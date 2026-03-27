@@ -9,6 +9,7 @@ import {
 import { getThreadById } from "../repositories/threadRepository";
 import { authenticateToken } from "../middleware/authenticate";
 import { validateCSRFToken } from "../middleware/csrf";
+import { validateUUIDParam } from "../middleware/validateParams";
 
 const router = express.Router();
 
@@ -59,7 +60,7 @@ router.post("/posts", authenticateToken, validateCSRFToken, async (req, res) => 
   }
 });
 
-router.patch("/posts/:id", authenticateToken, validateCSRFToken, async (req, res) => {
+router.patch("/posts/:id", validateUUIDParam("id"), authenticateToken, validateCSRFToken, async (req, res) => {
   const parseResult = postUpdateSchema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({
@@ -71,7 +72,7 @@ router.patch("/posts/:id", authenticateToken, validateCSRFToken, async (req, res
     });
   }
   try {
-    const id = req.params.id as string;
+    const id = req.params.id;
     const { content } = parseResult.data;
 
     const post = await getPostById(id);
@@ -106,9 +107,9 @@ router.patch("/posts/:id", authenticateToken, validateCSRFToken, async (req, res
   }
 });
 
-router.delete("/posts/:id", authenticateToken, validateCSRFToken, async (req, res) => {
+router.delete("/posts/:id", validateUUIDParam("id"), authenticateToken, validateCSRFToken, async (req, res) => {
   try {
-    const id = req.params.id as string;
+    const id = req.params.id;
 
     const post = await getPostById(id);
     if (!post) {
