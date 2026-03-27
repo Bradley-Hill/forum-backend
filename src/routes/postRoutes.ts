@@ -8,10 +8,11 @@ import {
 } from "../repositories/postRepository";
 import { getThreadById } from "../repositories/threadRepository";
 import { authenticateToken } from "../middleware/authenticate";
+import { validateCSRFToken } from "../middleware/csrf";
 
 const router = express.Router();
 
-router.post("/posts", authenticateToken, async (req, res) => {
+router.post("/posts", authenticateToken, validateCSRFToken, async (req, res) => {
   const parseResult = postCreateSchema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({
@@ -58,7 +59,7 @@ router.post("/posts", authenticateToken, async (req, res) => {
   }
 });
 
-router.patch("/posts/:id", authenticateToken, async (req, res) => {
+router.patch("/posts/:id", authenticateToken, validateCSRFToken, async (req, res) => {
   const parseResult = postUpdateSchema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({
@@ -105,7 +106,7 @@ router.patch("/posts/:id", authenticateToken, async (req, res) => {
   }
 });
 
-router.delete("/posts/:id", authenticateToken, async (req, res) => {
+router.delete("/posts/:id", authenticateToken, validateCSRFToken, async (req, res) => {
   try {
     const id = req.params.id as string;
 

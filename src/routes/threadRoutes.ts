@@ -18,6 +18,7 @@ import express from "express";
 import { Thread } from "../types/thread";
 import { authenticateToken } from "../middleware/authenticate";
 import { requireAdmin } from "../middleware/requireAdmin";
+import { validateCSRFToken } from "../middleware/csrf";
 
 const router = express.Router();
 
@@ -95,7 +96,7 @@ router.get("/threads/:id", async (req, res) => {
   }
 });
 
-router.post("/threads", authenticateToken, async (req, res) => {
+router.post("/threads", authenticateToken, validateCSRFToken, async (req, res) => {
   const parseresult = threadCreateSchema.safeParse(req.body);
   if (!parseresult.success) {
     return res.status(400).json({
@@ -139,7 +140,7 @@ router.post("/threads", authenticateToken, async (req, res) => {
   }
 });
 
-router.patch("/threads/:id", authenticateToken, async (req, res) => {
+router.patch("/threads/:id", authenticateToken, validateCSRFToken, async (req, res) => {
   const parseResult = threadUpdateSchema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({
@@ -189,7 +190,7 @@ router.patch("/threads/:id", authenticateToken, async (req, res) => {
   }
 });
 
-router.delete("/threads/:id", authenticateToken, async (req, res) => {
+router.delete("/threads/:id", authenticateToken, validateCSRFToken, async (req, res) => {
   try {
     const id = req.params.id as string;
 
@@ -216,6 +217,7 @@ router.delete("/threads/:id", authenticateToken, async (req, res) => {
       "/threads/:id/lock",
       authenticateToken,
       requireAdmin,
+      validateCSRFToken,
       async (req, res) => {
         try {
           const id = req.params.id as string;
@@ -258,6 +260,7 @@ router.delete("/threads/:id", authenticateToken, async (req, res) => {
       "/threads/:id/sticky",
       authenticateToken,
       requireAdmin,
+      validateCSRFToken,
       async (req, res) => {
         try {
           const id = req.params.id as string;

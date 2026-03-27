@@ -16,6 +16,7 @@ import { Category } from "../types/category";
 import { getThreadsByCategory } from "../repositories/threadRepository";
 import { authenticateToken } from "../middleware/authenticate";
 import { requireAdmin } from "../middleware/requireAdmin";
+import { validateCSRFToken } from "../middleware/csrf";
 
 const router = express.Router();
 
@@ -90,6 +91,7 @@ router.post(
   "/categories",
   authenticateToken,
   requireAdmin,
+  validateCSRFToken,
   async (req, res) => {
     const parseResult = categoryCreateSchema.safeParse(req.body);
     if (!parseResult.success) {
@@ -121,6 +123,7 @@ router.delete(
   "/categories/:id",
   authenticateToken,
   requireAdmin,
+  validateCSRFToken,
   async (req, res) => {
     try {
       const id = req.params.id as string;

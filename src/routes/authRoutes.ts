@@ -13,7 +13,7 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { parse } from "path";
+import { generateCSRFToken } from "../middleware/csrf";
 
 const router = Router();
 
@@ -96,13 +96,14 @@ router.post("/login",rateLimiter, async (req, res) => {
       { expiresIn: "1h" },
     );
     const refreshToken = crypto.randomUUID();
+    const csrfToken = generateCSRFToken();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await createRefreshToken(user.id, refreshToken, expiresAt);
 
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 1 * 60 * 60 * 1000,
     });
 
@@ -113,7 +114,14 @@ router.post("/login",rateLimiter, async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({ data: { message: "Login successful" } });
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1 * 60 * 60 * 1000,
+    });
+
+    res.json({ data: { message: "Login successful", csrfToken } });
   } catch (error) {
     console.error(`Error logging in user with email ${email}:`, error);
     res.status(500).json({
@@ -166,7 +174,7 @@ router.post("/refresh",rateLimiter, async (req, res) => {
         res.cookie('accessToken', newAccessToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
+          sameSite: 'strict',
           maxAge: 1 * 60 * 60 * 1000,
         });
 
