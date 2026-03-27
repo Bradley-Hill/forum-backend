@@ -99,7 +99,21 @@ router.post("/login",rateLimiter, async (req, res) => {
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await createRefreshToken(user.id, refreshToken, expiresAt);
 
-    res.json({ data: { accessToken, refreshToken } });
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 1 * 60 * 60 * 1000,
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({ data: { message: "Login successful" } });
   } catch (error) {
     console.error(`Error logging in user with email ${email}:`, error);
     res.status(500).json({
@@ -112,7 +126,7 @@ router.post("/login",rateLimiter, async (req, res) => {
 });
 
 router.post("/refresh",rateLimiter, async (req, res) => {
-    const { refreshToken } = req.body;
+    const { refreshToken } = req.cookies;
     try {
         if (!refreshToken) {
             return res.status(400).json({
@@ -149,7 +163,14 @@ router.post("/refresh",rateLimiter, async (req, res) => {
             { expiresIn: "1h" },
         );
 
-        res.json({ data: { accessToken: newAccessToken } });
+        res.cookie('accessToken', newAccessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 1 * 60 * 60 * 1000,
+        });
+
+        res.json({ data: { message: "Token refreshed successfully" } });
     } catch (error) {
         console.error(`Error refreshing token ${refreshToken}:`, error);
         res.status(500).json({
@@ -162,7 +183,7 @@ router.post("/refresh",rateLimiter, async (req, res) => {
 });
 
 router.post("/logout", async (req, res) => {
-    const { refreshToken } = req.body;
+    const { refreshToken } = req.cookies;
     try {
         if (!refreshToken) {
             return res.status(400).json({
@@ -174,6 +195,10 @@ router.post("/logout", async (req, res) => {
         }
 
         await deleteRefreshToken(refreshToken);
+        
+        res.clearCookie('accessToken');
+        res.clearCookie('refreshToken');
+        
         res.json({ data: { message: "Logged out successfully" } });
     } catch (error) {
         console.error(`Error logging out with refresh token ${refreshToken}:`, error);
