@@ -48,7 +48,39 @@ router.post("/register", rateLimiter, async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await createUser(username, email, passwordHash);
-    res.status(201).json({ data: user });
+    
+    const accessToken = jwt.sign(
+      { id: user.id, username: user.username, role: user.role },
+      process.env.JWT_ACCESS_SECRET as string,
+      { expiresIn: "1h" },
+    );
+    const refreshToken = crypto.randomUUID();
+    const csrfToken = generateCSRFToken();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await createRefreshToken(user.id, refreshToken, expiresAt);
+
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1 * 60 * 60 * 1000,
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.cookie('csrfToken', csrfToken, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1 * 60 * 60 * 1000,
+    });
+
+    res.status(201).json({ data: { message: "Registration successful", csrfToken } });
   } catch (error) {
     console.error(`Error registering user ${username}:`, error);
     res.status(500).json({
@@ -59,6 +91,7 @@ router.post("/register", rateLimiter, async (req, res) => {
     });
   }
 });
+
 
 router.post("/login",rateLimiter, async (req, res) => {
   const parseResult = userLoginSchema.safeParse(req.body);

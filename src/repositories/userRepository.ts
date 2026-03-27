@@ -49,7 +49,7 @@ export async function createUser(
   const client = await pool.connect();
   try {
     const result = await client.query(
-      "INSERT INTO users (username, email, password_hash, role) VALUES ($1, $2, $3, 'member') RETURNING id, username, email",
+      "INSERT INTO users (username, email, password_hash, role) VALUES ($1, $2, $3, 'member') RETURNING id, username, email, role",
       [username, email, passwordHash],
     );
     return result.rows[0];
