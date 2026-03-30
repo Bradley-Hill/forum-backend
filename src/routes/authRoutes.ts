@@ -203,6 +203,7 @@ router.post("/refresh",rateLimiter, async (req, res) => {
             process.env.JWT_ACCESS_SECRET as string,
             { expiresIn: "1h" },
         );
+        const newCsrfToken = generateCSRFToken();
 
         res.cookie('accessToken', newAccessToken, {
           httpOnly: true,
@@ -211,7 +212,14 @@ router.post("/refresh",rateLimiter, async (req, res) => {
           maxAge: 1 * 60 * 60 * 1000,
         });
 
-        res.json({ data: { message: "Token refreshed successfully" } });
+        res.cookie('csrfToken', newCsrfToken, {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 1 * 60 * 60 * 1000,
+        });
+
+        res.json({ data: { message: "Token refreshed successfully", csrfToken: newCsrfToken } });
     } catch (error) {
         console.error(`Error refreshing token ${refreshToken}:`, error);
         res.status(500).json({
