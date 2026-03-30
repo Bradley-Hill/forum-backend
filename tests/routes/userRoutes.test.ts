@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import app from "../../src/app";
 import pool from "../../src/db/pool";
+import { loginUser } from "../testUtils";
 
 const TEST_USER = {
   username: "profileuser",
@@ -34,15 +35,12 @@ describe("GET /api/users/:username", () => {
 });
 
 describe("PATCH /api/users/me", () => {
-  let accessToken: string;
+  let cookies: string;
+  let csrfToken: string;
 
   beforeEach(async () => {
     await request(app).post("/api/auth/register").send(TEST_USER);
-    const loginRes = await request(app).post("/api/auth/login").send({
-      email: TEST_USER.email,
-      password: TEST_USER.password,
-    });
-    accessToken = loginRes.body.data.accessToken;
+    ({ cookies, csrfToken } = await loginUser(TEST_USER.email, TEST_USER.password));
   });
 
   afterEach(async () => {
@@ -53,7 +51,8 @@ describe("PATCH /api/users/me", () => {
   it("Should update email", async () => {
     const res = await request(app)
       .patch("/api/users/me")
-      .set("Authorization", `Bearer ${accessToken}`)
+      .set("Cookie", cookies)
+      .set("X-CSRF-Token", csrfToken)
       .send({ email: "newemail@example.com" });
 
     expect(res.status).toBe(200);
@@ -63,7 +62,8 @@ describe("PATCH /api/users/me", () => {
   it("Should update password with correct currentPassword", async () => {
     const res = await request(app)
       .patch("/api/users/me")
-      .set("Authorization", `Bearer ${accessToken}`)
+      .set("Cookie", cookies)
+      .set("X-CSRF-Token", csrfToken)
       .send({ currentPassword: TEST_USER.password, newPassword: "newpass123" });
 
     expect(res.status).toBe(200);
@@ -73,13 +73,14 @@ describe("PATCH /api/users/me", () => {
       password: "newpass123",
     });
     expect(loginRes.status).toBe(200);
-    expect(loginRes.body.data).toHaveProperty("accessToken");
+    expect(loginRes.body.data).toHaveProperty("csrfToken");
   });
 
   it("Should return 400 if neither email nor newPassword provided", async () => {
     const res = await request(app)
       .patch("/api/users/me")
-      .set("Authorization", `Bearer ${accessToken}`)
+      .set("Cookie", cookies)
+      .set("X-CSRF-Token", csrfToken)
       .send({});
     expect(res.status).toBe(400);
   });
@@ -87,7 +88,8 @@ describe("PATCH /api/users/me", () => {
   it("Should return 400 if currentPassword missing when changing password", async () => {
     const res = await request(app)
       .patch("/api/users/me")
-      .set("Authorization", `Bearer ${accessToken}`)
+      .set("Cookie", cookies)
+      .set("X-CSRF-Token", csrfToken)
       .send({ newPassword: "newpass123" });
     expect(res.status).toBe(400);
   });
@@ -95,7 +97,8 @@ describe("PATCH /api/users/me", () => {
   it("Should return 401 if currentPassword is wrong", async () => {
     const res = await request(app)
       .patch("/api/users/me")
-      .set("Authorization", `Bearer ${accessToken}`)
+      .set("Cookie", cookies)
+      .set("X-CSRF-Token", csrfToken)
       .send({ currentPassword: "wrongpassword", newPassword: "newpass123" });
     expect(res.status).toBe(401);
   });
@@ -109,16 +112,25 @@ describe("PATCH /api/users/me", () => {
 
     const res = await request(app)
       .patch("/api/users/me")
-      .set("Authorization", `Bearer ${accessToken}`)
+      .set("Cookie", cookies)
+      .set("X-CSRF-Token", csrfToken)
       .send({ email: "newemail@example.com" });
 
     expect(res.status).toBe(409);
   });
 
-  it("Should return 401 if no token is provided", async () => {
+  it("Should return 401 if no auth cookies provided", async () => {
     const res = await request(app)
       .patch("/api/users/me")
       .send({ email: "newemail@example.com" });
     expect(res.status).toBe(401);
+  });
+
+  it("Should return 403 if CSRF token is missing", async () => {
+    const res = await request(app)
+      .patch("/api/users/me")
+      .set("Cookie", cookies)
+      .send({ email: "newemail@example.com" });
+    expect(res.status).toBe(403);
   });
 });

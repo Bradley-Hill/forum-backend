@@ -9,7 +9,9 @@ import {
   deleteUser,
   findMeById,
 } from "../repositories/userRepository";
+import { getThreadsByUserId } from "../repositories/threadRepository";
 import { authenticateToken } from "../middleware/authenticate";
+import { validateCSRFToken } from "../middleware/csrf";
 
 const router = express.Router();
 
@@ -63,7 +65,40 @@ router.get("/users/:username", async (req, res) => {
   }
 });
 
-router.patch("/users/me", authenticateToken, async (req, res) => {
+router.get("/users/:username/threads", async (req, res) => {
+  try {
+    const { username } = req.params;
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 10;
+
+    const user = await findUserByUsername(username);
+    if (!user) {
+      return res.status(404).json({
+        error: { message: "User not found", code: "USER_NOT_FOUND" },
+      });
+    }
+
+    const { threads, totalCount } = await getThreadsByUserId(user.id, page, pageSize);
+    res.json({
+      data: {
+        threads,
+        pagination: {
+          page,
+          pageSize,
+          totalItems: totalCount,
+          totalPages: Math.ceil(totalCount / pageSize),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching user threads:", error);
+    res.status(500).json({
+      error: { message: "Internal server error", code: "DATABASE_ERROR" },
+    });
+  }
+});
+
+router.patch("/users/me", authenticateToken, validateCSRFToken, async (req, res) => {
   const parseResult = userUpdateSchema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({
@@ -135,7 +170,7 @@ router.patch("/users/me", authenticateToken, async (req, res) => {
   }
 });
 
-router.delete("/users/me", authenticateToken, async (req, res) => {
+router.delete("/users/me", authenticateToken, validateCSRFToken, async (req, res) => {
   try {
     const userId = req.user!.id;
     await deleteUser(userId);

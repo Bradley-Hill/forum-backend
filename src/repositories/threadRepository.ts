@@ -84,6 +84,52 @@ export async function getThreadById(threadId: string): Promise<Thread | null> {
   }
 }
 
+export async function getThreadsByUserId(
+  userId: string,
+  page: number,
+  pageSize: number = 10,
+): Promise<{ threads: Thread[]; totalCount: number }> {
+  const client = await pool.connect();
+  try {
+    const countResult = await client.query(
+      `SELECT COUNT(*) FROM threads WHERE author_id = $1`,
+      [userId],
+    );
+    const totalCount = parseInt(countResult.rows[0].count);
+
+    const offset = (page - 1) * pageSize;
+    const threadsResult = await client.query(
+      `SELECT
+         threads.id,
+         threads.category_id,
+         threads.title,
+         threads.is_sticky,
+         threads.is_locked,
+         threads.created_at,
+         threads.updated_at,
+         users.id AS author_id,
+         users.username,
+         (SELECT COUNT(*) FROM posts WHERE posts.thread_id = threads.id) AS reply_count
+       FROM threads
+       JOIN users ON threads.author_id = users.id
+       WHERE threads.author_id = $1
+       ORDER BY threads.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, pageSize, offset],
+    );
+
+    return {
+      threads: threadsResult.rows.map(mapThreadRow),
+      totalCount,
+    };
+  } catch (error) {
+    console.error(`Error fetching threads for user ${userId}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function createThreadWithPost(
   categoryId: string,
   title: string,

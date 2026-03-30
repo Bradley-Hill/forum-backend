@@ -25,7 +25,7 @@ const router = express.Router();
 
 router.get("/threads/:id", validateUUIDParam("id"), async (req, res) => {
   try {
-    const id = req.params.id;
+    const id = req.params.id as string;
 
     const parseResult = paginationSchema.safeParse({
       page: req.query.page as string | undefined,
@@ -81,7 +81,7 @@ router.get("/threads/:id", validateUUIDParam("id"), async (req, res) => {
         pagination: {
           page,
           pageSize,
-          totalPosts: totalCount,
+          totalItems: totalCount,
           totalPages: Math.ceil(totalCount / pageSize),
         },
       },
@@ -153,7 +153,7 @@ router.patch("/threads/:id", validateUUIDParam("id"), authenticateToken, validat
     });
   }
   try {
-    const id = req.params.id;
+    const id = req.params.id as string;
     const { title } = parseResult.data;
 
     const thread = await getThreadById(id);
@@ -193,7 +193,7 @@ router.patch("/threads/:id", validateUUIDParam("id"), authenticateToken, validat
 
 router.delete("/threads/:id", validateUUIDParam("id"), authenticateToken, validateCSRFToken, async (req, res) => {
   try {
-    const id = req.params.id;
+    const id = req.params.id as string;
 
     const thread = await getThreadById(id);
     if (!thread) {
@@ -214,93 +214,6 @@ router.delete("/threads/:id", validateUUIDParam("id"), authenticateToken, valida
       });
     }
 
-    router.patch(
-      "/threads/:id/lock",
-      validateUUIDParam("id"),
-      authenticateToken,
-      requireAdmin,
-      validateCSRFToken,
-      async (req, res) => {
-        try {
-          const id = req.params.id;
-          const { is_locked } = req.body;
-
-          if (typeof is_locked !== "boolean") {
-            return res.status(400).json({
-              error: {
-                message: "is_locked must be a boolean",
-                code: "VALIDATION_ERROR",
-              },
-            });
-          }
-
-          const thread = await getThreadById(id);
-          if (!thread) {
-            return res.status(404).json({
-              error: {
-                message: "Thread not found",
-                code: "THREAD_NOT_FOUND",
-              },
-            });
-          }
-
-          const updated = await setThreadLocked(id, is_locked);
-          res.json({ data: updated });
-        } catch (error) {
-          console.error("Error updating thread lock status:", error);
-          res.status(500).json({
-            error: {
-              message: "Internal server error",
-              code: "DATABASE_ERROR",
-            },
-          });
-        }
-      },
-    );
-
-    router.patch(
-      validateUUIDParam("id"),
-      authenticateToken,
-      requireAdmin,
-      validateCSRFToken,
-      async (req, res) => {
-        try {
-          const id = req.params.id as string;
-          const { is_sticky } = req.body;
-
-          if (typeof is_sticky !== "boolean") {
-            return res.status(400).json({
-              error: {
-                message: "is_sticky must be a boolean",
-                code: "VALIDATION_ERROR",
-              },
-            });
-          }
-
-          const thread = await getThreadById(id);
-          if (!thread) {
-            return res.status(404).json({
-              error: {
-                message: "Thread not found",
-                code: "THREAD_NOT_FOUND",
-              },
-            });
-          }
-
-          const updated = await setThreadSticky(id, is_sticky);
-          res.json({ data: updated });
-        } catch (error) {
-          console.error("Error updating thread sticky status:", error);
-          res.status(500).json({
-            error: {
-              message: "Internal server error",
-              code: "DATABASE_ERROR",
-            },
-          });
-        }
-      },
-    );
-
     await deleteThread(id);
     res.status(204).send();
   } catch (error) {
@@ -313,5 +226,93 @@ router.delete("/threads/:id", validateUUIDParam("id"), authenticateToken, valida
     });
   }
 });
+
+router.patch(
+  "/threads/:id/lock",
+  validateUUIDParam("id"),
+  authenticateToken,
+  requireAdmin,
+  validateCSRFToken,
+  async (req, res) => {
+    try {
+      const id = req.params.id as string;
+      const { is_locked } = req.body;
+
+      if (typeof is_locked !== "boolean") {
+        return res.status(400).json({
+          error: {
+            message: "is_locked must be a boolean",
+            code: "VALIDATION_ERROR",
+          },
+        });
+      }
+
+      const thread = await getThreadById(id);
+      if (!thread) {
+        return res.status(404).json({
+          error: {
+            message: "Thread not found",
+            code: "THREAD_NOT_FOUND",
+          },
+        });
+      }
+
+      const updated = await setThreadLocked(id, is_locked);
+      res.json({ data: updated });
+    } catch (error) {
+      console.error("Error updating thread lock status:", error);
+      res.status(500).json({
+        error: {
+          message: "Internal server error",
+          code: "DATABASE_ERROR",
+        },
+      });
+    }
+  },
+);
+
+router.patch(
+  "/threads/:id/sticky",
+  validateUUIDParam("id"),
+  authenticateToken,
+  requireAdmin,
+  validateCSRFToken,
+  async (req, res) => {
+    try {
+      const id = req.params.id as string;
+      const { is_sticky } = req.body;
+
+      if (typeof is_sticky !== "boolean") {
+        return res.status(400).json({
+          error: {
+            message: "is_sticky must be a boolean",
+            code: "VALIDATION_ERROR",
+          },
+        });
+      }
+
+      const thread = await getThreadById(id);
+      if (!thread) {
+        return res.status(404).json({
+          error: {
+            message: "Thread not found",
+            code: "THREAD_NOT_FOUND",
+          },
+        });
+      }
+
+      const updated = await setThreadSticky(id, is_sticky);
+      res.json({ data: updated });
+    } catch (error) {
+      console.error("Error updating thread sticky status:", error);
+      res.status(500).json({
+        error: {
+          message: "Internal server error",
+          code: "DATABASE_ERROR",
+        },
+      });
+    }
+  },
+);
 
 export default router;

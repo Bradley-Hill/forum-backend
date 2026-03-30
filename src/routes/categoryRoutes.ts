@@ -72,7 +72,7 @@ router.get("/categories/:slug/threads", async (req, res) => {
         pagination: {
           page,
           pageSize,
-          totalThreads: totalCount,
+          totalItems: totalCount,
           totalPages: Math.ceil(totalCount / pageSize),
         },
       },
