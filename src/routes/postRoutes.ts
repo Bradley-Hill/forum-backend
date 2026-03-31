@@ -72,7 +72,7 @@ router.patch("/posts/:id", validateUUIDParam("id"), authenticateToken, validateC
     });
   }
   try {
-    const id = req.params.id;
+    const id = req.params.id as string;
     const { content } = parseResult.data;
 
     const post = await getPostById(id);
@@ -109,7 +109,7 @@ router.patch("/posts/:id", validateUUIDParam("id"), authenticateToken, validateC
 
 router.delete("/posts/:id", validateUUIDParam("id"), authenticateToken, validateCSRFToken, async (req, res) => {
   try {
-    const id = req.params.id;
+    const id = req.params.id as string;
 
     const post = await getPostById(id);
     if (!post) {
