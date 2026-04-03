@@ -7,6 +7,12 @@ export const rateLimiter =
     : rateLimit({
         windowMs: 1 * 60 * 1000,
         max: 10,
-        message:
-          "Too many requests from this IP, please try again after 1 minute",
+        handler: (req: Request, res: Response) => {
+          res.status(429).json({
+            error: {
+              code: "RATE_LIMIT_EXCEEDED",
+              message: "Too many requests from this IP, please try again after 1 minute",
+            },
+          });
+        },
       });

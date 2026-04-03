@@ -11,6 +11,7 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  reorderCategories,
 } from "../repositories/categoryRepository";
 import { Category } from "../types/category";
 import { getThreadsByCategory } from "../repositories/threadRepository";
@@ -199,6 +200,50 @@ router.patch(
       res.status(500).json({
         error: {
           message: "Internal server error",
+          code: "DATABASE_ERROR",
+        },
+      });
+    }
+  },
+);
+
+router.patch(
+  "/categories/:id/position",
+  validateUUIDParam("id"),
+  authenticateToken,
+  requireAdmin,
+  validateCSRFToken,
+  async (req, res) => {
+    try {
+      const { position } = req.body;
+      const id = req.params.id as string;
+
+      if (typeof position !== "number" || position < 0) {
+        return res.status(400).json({
+          error: {
+            message: "Position must be a non-negative number",
+            code: "VALIDATION_ERROR",
+          },
+        });
+      }
+
+      const category = await getCategoryById(id);
+      if (!category) {
+        return res.status(404).json({
+          error: {
+            message: "Category not found",
+            code: "CATEGORY_NOT_FOUND",
+          },
+        });
+      }
+
+      const reorderedCategories = await reorderCategories(id, position);
+      res.json({ data: reorderedCategories });
+    } catch (error) {
+      console.error("Error reordering categories:", error);
+      res.status(500).json({
+        error: {
+          message: "Failed to reorder categories",
           code: "DATABASE_ERROR",
         },
       });

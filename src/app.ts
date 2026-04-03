@@ -1,4 +1,4 @@
-import Express from "express";
+import Express, { Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -26,6 +26,31 @@ app.use('/api', userRoutes)
 
 app.get("/", (req, res) => {
   res.send("Hello World");
+});
+
+app.use((req: Request, res: Response) => {
+  res.status(404).json({
+    error: {
+      code: "NOT_FOUND",
+      message: "Endpoint not found",
+    },
+  });
+});
+
+app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+  console.error("[Error]", err);
+
+  const status = (err instanceof Object && 'status' in err) ? (err.status as number) : 500;
+  const code = (err instanceof Object && 'code' in err) ? (err.code as string) : "SERVER_ERROR";
+  const message = (err instanceof Error) ? err.message : "An unexpected error occurred";
+
+  res.status(status).json({
+    error: {
+      code,
+      message,
+      ...(process.env.NODE_ENV === "development" && { details: err instanceof Error ? err.stack : String(err) }),
+    },
+  });
 });
 
 export default app;
