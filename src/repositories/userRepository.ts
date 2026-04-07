@@ -134,7 +134,7 @@ export async function findUserById(id: string): Promise<PublicUser | null> {
 
 export async function updateUser(
   userId: string,
-  fields: { email?: string; password_hash?: string },
+  fields: { email?: string; password_hash?: string; avatar_url?: string },
 ): Promise<RegisteredUser> {
   const client = await pool.connect();
   try {
@@ -149,6 +149,10 @@ export async function updateUser(
     if (fields.password_hash !== undefined) {
       setClauses.push(`password_hash = $${paramIndex++}`);
       values.push(fields.password_hash);
+    }
+    if (fields.avatar_url !== undefined) {
+      setClauses.push(`avatar_url = $${paramIndex++}`);
+      values.push(fields.avatar_url);
     }
 
     values.push(userId);

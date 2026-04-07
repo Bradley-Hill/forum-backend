@@ -4,6 +4,7 @@ export interface Post {
   author: {
     id: string;
     username: string;
+    avatar_url?: string;
   };
   content: string;
   created_at: Date;

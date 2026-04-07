@@ -7,6 +7,7 @@ export function mapPostRow(row: any): Post {
     author: {
       id: row.author_id,
       username: row.username,
+      avatar_url: row.avatar_url,
     },
     content: row.content,
     created_at: row.created_at,

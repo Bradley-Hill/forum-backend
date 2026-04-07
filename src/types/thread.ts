@@ -4,6 +4,7 @@ export interface Thread {
   author: {
     id: string;
     username: string;
+    avatar_url?: string;
   };
   title: string;
   reply_count: number;

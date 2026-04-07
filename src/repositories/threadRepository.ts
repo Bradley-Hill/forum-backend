@@ -29,6 +29,7 @@ export async function getThreadsByCategory(
          threads.updated_at,
          users.id AS author_id,
          users.username,
+         users.avatar_url,
          (SELECT COUNT(*) FROM posts WHERE posts.thread_id = threads.id) AS reply_count
        FROM threads
        JOIN users ON threads.author_id = users.id
@@ -66,6 +67,7 @@ export async function getThreadById(threadId: string): Promise<Thread | null> {
          threads.updated_at,
          users.id AS author_id,
          users.username,
+         users.avatar_url,
          (SELECT COUNT(*) FROM posts WHERE posts.thread_id = threads.id) AS reply_count
        FROM threads
        JOIN users ON threads.author_id = users.id
@@ -109,6 +111,7 @@ export async function getThreadsByUserId(
          threads.updated_at,
          users.id AS author_id,
          users.username,
+         users.avatar_url,
          (SELECT COUNT(*) FROM posts WHERE posts.thread_id = threads.id) AS reply_count
        FROM threads
        JOIN users ON threads.author_id = users.id

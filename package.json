@@ -23,6 +23,7 @@
   "homepage": "https://github.com/Bradley-Hill/forum-backend#readme",
   "dependencies": {
     "@Bradley-Hill/forum-schemas": "^1.0.5",
+    "@supabase/supabase-js": "^2.102.1",
     "@types/cors": "^2.8.19",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
@@ -32,13 +33,16 @@
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.18.0"
+    "multer": "^2.1.1",
+    "pg": "^8.18.0",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.1.0",
     "@types/node": "^25.5.0",
     "@types/pg": "^8.16.0",
     "@types/supertest": "^6.0.3",

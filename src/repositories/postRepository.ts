@@ -17,7 +17,7 @@ export async function getPostsByThread(
 
     const offset = (page - 1) * pageSize;
     const result = await client.query(
-      "SELECT posts.id, posts.thread_id, posts.content, posts.created_at, posts.updated_at, users.id AS author_id, users.username FROM posts JOIN users ON posts.author_id = users.id WHERE posts.thread_id = $1 ORDER BY posts.created_at ASC LIMIT $2 OFFSET $3",
+      "SELECT posts.id, posts.thread_id, posts.content, posts.created_at, posts.updated_at, users.id AS author_id, users.username, users.avatar_url FROM posts JOIN users ON posts.author_id = users.id WHERE posts.thread_id = $1 ORDER BY posts.created_at ASC LIMIT $2 OFFSET $3",
       [threadId, pageSize, offset],
     );
     const posts = result.rows.map(mapPostRow);
@@ -41,7 +41,8 @@ export async function getPostById(postId: string): Promise<Post | null> {
                posts.created_at,
                posts.updated_at,
                users.id AS author_id,
-               users.username
+               users.username,
+               users.avatar_url
              FROM posts
              JOIN users ON posts.author_id = users.id
              WHERE posts.id = $1`,

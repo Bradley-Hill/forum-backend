@@ -12,6 +12,7 @@ export function mapThreadRow(row: any): Thread {
     author: {
       id: row.author_id,
       username: row.username,
+      avatar_url: row.avatar_url,
     },
     reply_count: parseInt(row.reply_count),
   };

@@ -5,6 +5,7 @@ export interface User {
   password_hash: string;
   role: "member" | "admin";
   created_at: Date;
+  avatar_url?: string;
 }
 
 export interface PublicUser {
@@ -12,6 +13,7 @@ export interface PublicUser {
   username: string;
   role: "member" | "admin";
   created_at: Date;
+  avatar_url?: string;
 }
 
 export interface RegisteredUser {
@@ -27,4 +29,5 @@ export interface MeUser {
   email: string;
   role: "member" | "admin";
   created_at: Date;
+  avatar_url?: string;
 }
