@@ -192,7 +192,7 @@ export async function findMeById(id: string): Promise<MeUser | null> {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      "SELECT id, username, email, role, created_at FROM users WHERE id = $1",
+      "SELECT id, username, email, role, created_at, avatar_url FROM users WHERE id = $1",
       [id],
     );
     if (result.rows.length === 0) {
